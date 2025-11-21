@@ -1,3 +1,6 @@
 # app
+## 앱실행
+flutter run
 
-A new Flutter project.
+## 앱빌드
+flutter build apk --release
