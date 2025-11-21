@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gentle.talk.mapper.etc.MediationProposalLogMapper">
+
+    <resultMap id="MediationProposalLogMap" type="com.gentle.talk.domain.etc.MediationProposalLog">
+        <id property="no" column="no"/>
+        <result property="id" column="id"/>
+        <result property="categoryNo" column="category_no"/>
+        <result property="conflictSituationHash" column="conflict_situation_hash"/>
+        <result property="conflictSituation" column="conflict_situation"/>
+        <result property="requirements" column="requirements"/>
+        <result property="opponentRequirements" column="opponent_requirements"/>
+        <result property="mediationProposals" column="mediation_proposals"/>
+        <result property="aiModel" column="ai_model"/>
+        <result property="aiRequestTokens" column="ai_request_tokens"/>
+        <result property="aiResponseTokens" column="ai_response_tokens"/>
+        <result property="similarityScore" column="similarity_score"/>
+        <result property="reuseCount" column="reuse_count"/>
+        <result property="lastReusedAt" column="last_reused_at"/>
+        <result property="isFromApi" column="is_from_api"/>
+        <result property="sourceLogNo" column="source_log_no"/>
+        <result property="successFeedback" column="success_feedback"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <association property="category" column="category_no" javaType="IssueCategory" select="selectCategory"></association>
+    </resultMap>
+
+    <!-- 카테고리 정보 조회 -->
+    <select id="selectCategory" resultType="IssueCategory">
+        SELECT *
+        FROM issue_categories
+        WHERE no = #{categoryNo}
+    </select>
+
+    <!-- 유사한 중재안 로그 검색 -->
+    <select id="findSimilarLogs" resultMap="MediationProposalLogMap">
+        SELECT *
+        FROM mediation_proposal_logs
+        WHERE category_no = #{categoryNo}
+        AND conflict_situation_hash = #{conflictSituationHash}
+        AND is_from_api = 1
+        AND success_feedback IS NULL OR success_feedback = 1
+        ORDER BY reuse_count DESC, created_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 인기 중재안 로그 조회 -->
+    <select id="findPopularLogs" resultMap="MediationProposalLogMap">
+        SELECT *
+        FROM mediation_proposal_logs
+        WHERE category_no = #{categoryNo}
+        AND is_from_api = 1
+        AND (success_feedback IS NULL OR success_feedback = 1)
+        ORDER BY reuse_count DESC, created_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 최근 중재안 로그 조회 -->
+    <select id="findRecentLogs" resultMap="MediationProposalLogMap">
+        SELECT *
+        FROM mediation_proposal_logs
+        WHERE category_no = #{categoryNo}
+        AND is_from_api = 1
+        ORDER BY created_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 재사용 횟수 증가 -->
+    <update id="incrementReuseCount">
+        UPDATE mediation_proposal_logs
+        SET reuse_count = reuse_count + 1,
+            last_reused_at = NOW()
+        WHERE no = #{logNo}
+    </update>
+
+</mapper>

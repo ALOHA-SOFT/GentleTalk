@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gentle.talk.mapper.users.UserMapper">
+
+    <resultMap id="UserMap" type="com.gentle.talk.domain.users.Users">
+        <id property="no" column="no"/>
+        <result property="id" column="id"/>
+        <result property="username" column="username"/>
+        <result property="password" column="password"/>
+        <result property="name" column="name"/>
+        <result property="tel" column="tel" />
+        <result property="enabled" column="enabled"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <collection property="authList" column="username" javaType="list" ofType="UserAuth" select="selectAuthList"></collection>
+    </resultMap>
+
+
+    <!-- 🔐로그인 - selectByUsername -->
+    <select id="selectByUsername" resultMap="UserMap">
+        SELECT *
+        FROM users u
+        WHERE u.username = #{username}
+    </select>
+
+
+    <!-- 사용자 권한 조회 -->
+    <select id="selectAuthList" resultType="UserAuth">
+        SELECT *
+        FROM user_auth
+        WHERE username = #{username}
+    </select>
+
+    <!-- 페이징 조회 -->
+    <select id="listWithParams" resultMap="UserMap">
+        SELECT *
+        FROM users
+        WHERE 1=1
+        <if test="search != null and search != ''">
+            AND (username LIKE CONCAT('%', #{search}, '%') 
+                OR name LIKE CONCAT('%', #{search}, '%')
+                OR email LIKE CONCAT('%', #{search}, '%')
+                OR tel LIKE CONCAT('%', #{search}, '%'))
+        </if>
+        <if test="sortBy != null and sortBy.size() > 0">
+            ORDER BY
+            <foreach collection="sortBy" item="sortField" index="idx" separator=",">
+                ${sortField}
+                <if test="sortOrder != null and sortOrder.size() > idx">
+                    ${sortOrder[idx]}
+                </if>
+            </foreach>
+        </if>
+        <if test="sortBy == null or sortBy.size() == 0">
+            ORDER BY no DESC
+        </if>
+    </select>
+
+    <!-- 이름과 이메일로 사용자 찾기 (아이디 찾기용) -->
+    <select id="findByNameAndEmail" resultMap="UserMap">
+        SELECT *
+        FROM users
+        WHERE name = #{name} AND email = #{email} AND enabled = 1
+    </select>
+
+    <!-- 사용자명과 이메일로 사용자 찾기 (비밀번호 재설정용) -->
+    <select id="findByUsernameAndEmail" resultMap="UserMap">
+        SELECT *
+        FROM users
+        WHERE username = #{username} AND email = #{email} AND enabled = 1
+    </select>
+
+</mapper>

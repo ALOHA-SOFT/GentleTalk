@@ -1,0 +1,14 @@
+{
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Spring Boot-TalkApplication<talk>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.gentle.talk.TalkApplication",
+      "projectName": "talk",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
+    }
+  ]
+}

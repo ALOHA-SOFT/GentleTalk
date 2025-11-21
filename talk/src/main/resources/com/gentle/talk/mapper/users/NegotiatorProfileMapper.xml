@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gentle.talk.mapper.users.NegotiatorProfileMapper">
+
+    <resultMap id="NegotiatorProfileMap" type="com.gentle.talk.domain.users.NegotiatorProfile">
+        <id property="no" column="no"/>
+        <result property="id" column="id"/>
+        <result property="userNo" column="user_no"/>
+        <result property="introduction" column="introduction"/>
+        <result property="careerYears" column="career_years"/>
+        <result property="totalCases" column="total_cases"/>
+        <result property="successCases" column="success_cases"/>
+        <result property="successRate" column="success_rate"/>
+        <result property="avgResolutionDays" column="avg_resolution_days"/>
+        <result property="ratingAvg" column="rating_avg"/>
+        <result property="ratingCount" column="rating_count"/>
+        <result property="certifications" column="certifications"/>
+        <result property="specialties" column="specialties"/>
+        <result property="profileImageUrl" column="profile_image_url"/>
+        <result property="enabled" column="enabled"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <association property="user" column="user_no" javaType="Users" select="selectUser"></association>
+    </resultMap>
+
+    <!-- 회원 정보 조회 -->
+    <select id="selectUser" resultType="Users">
+        SELECT *
+        FROM users
+        WHERE no = #{userNo}
+    </select>
+
+    <!-- 회원 번호로 협상가 프로필 조회 -->
+    <select id="selectByUserNo" resultMap="NegotiatorProfileMap">
+        SELECT *
+        FROM negotiator_profiles
+        WHERE user_no = #{userNo}
+    </select>
+
+    <!-- 페이징 조회 -->
+    <select id="listWithParams" resultMap="NegotiatorProfileMap">
+        SELECT np.*
+        FROM negotiator_profiles np
+        WHERE 1=1
+        <if test="search != null and search != ''">
+            AND (np.introduction LIKE CONCAT('%', #{search}, '%'))
+        </if>
+        <if test="enabled != null">
+            AND np.enabled = #{enabled}
+        </if>
+        <if test="sortBy != null and sortBy.size() > 0">
+            ORDER BY
+            <foreach collection="sortBy" item="sortField" index="idx" separator=",">
+                ${sortField}
+            </foreach>
+        </if>
+        <if test="sortBy == null or sortBy.size() == 0">
+            ORDER BY np.rating_avg DESC, np.success_rate DESC
+        </if>
+        <if test="limit != null and offset != null">
+            LIMIT #{limit} OFFSET #{offset}
+        </if>
+    </select>
+
+    <!-- 전문 분야로 협상가 목록 조회 (JSON 검색) -->
+    <select id="findBySpecialty" resultMap="NegotiatorProfileMap">
+        SELECT *
+        FROM negotiator_profiles
+        WHERE enabled = 1
+        AND JSON_CONTAINS(specialties, JSON_QUOTE(#{categoryCode}))
+        ORDER BY rating_avg DESC, success_rate DESC
+    </select>
+
+    <!-- 평점 순으로 상위 협상가 조회 -->
+    <select id="findTopRatedNegotiators" resultMap="NegotiatorProfileMap">
+        SELECT *
+        FROM negotiator_profiles
+        WHERE enabled = 1
+        ORDER BY rating_avg DESC, rating_count DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 성공률 순으로 상위 협상가 조회 -->
+    <select id="findTopSuccessRateNegotiators" resultMap="NegotiatorProfileMap">
+        SELECT *
+        FROM negotiator_profiles
+        WHERE enabled = 1
+        AND total_cases >= 5
+        ORDER BY success_rate DESC, total_cases DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>
