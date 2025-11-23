@@ -7,6 +7,10 @@ import '../widgets/custom_text_field.dart';
 import '../widgets/gender_selector.dart';
 import '../widgets/primary_button.dart';
 
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../../../core/constants/config.dart';
+
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
@@ -35,16 +39,52 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
-  void _handleSignup() {
-    if (_formKey.currentState?.validate() ?? false) {
-      if (_selectedGender == null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('성별을 선택해주세요')));
-        return;
+  Future<void> _handleSignup() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    if (_selectedGender == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('성별을 선택해주세요')),
+      );
+      return;
+    }
+
+    try {
+      final uri = Uri.parse('${AppConfig.baseUrl}/api/v1/auth/join');
+
+      final body = {
+        'id': _usernameController.text.trim(),        // 로그인 ID
+        'username': _usernameController.text.trim(),
+        'password': _passwordController.text.trim(),
+        'name': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'tel': _phoneController.text.trim(),
+        'birth': _birthdateController.text.trim(),   
+        'gender': _selectedGender!.name,          
+        'type': 'USER',
+        'address' : '',                             // 주소 필드가 없으므로 빈 문자열로 전달
+      };
+
+      // 디버깅용 로그 (원하면)
+      // print('Signup body: $body');
+
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        Navigator.pushReplacementNamed(context, '/signup-success');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('회원가입 실패: ${response.statusCode}')),
+        );
       }
-      // TODO: Implement signup API call
-      Navigator.pushReplacementNamed(context, '/signup-success');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('서버와 통신 중 오류가 발생했습니다')),
+      );
     }
   }
 
@@ -77,6 +117,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         label: '아이디',
                         icon: Icons.person_outline,
                         controller: _usernameController,
+                        readOnly: false,
                       ),
                       const SizedBox(height: 20),
                       CustomTextField(
@@ -84,6 +125,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         icon: Icons.lock_outline,
                         controller: _passwordController,
                         obscureText: true,
+                        readOnly: false,
                       ),
                       const SizedBox(height: 20),
                       CustomTextField(
@@ -91,6 +133,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         icon: Icons.email_outlined,
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
+                        readOnly: false,
                       ),
                       const SizedBox(height: 20),
                       CustomTextField(
@@ -98,12 +141,14 @@ class _SignupScreenState extends State<SignupScreen> {
                         icon: Icons.phone_outlined,
                         controller: _phoneController,
                         keyboardType: TextInputType.phone,
+                        readOnly: false,
                       ),
                       const SizedBox(height: 20),
                       CustomTextField(
                         label: '이름',
                         icon: Icons.badge_outlined,
                         controller: _nameController,
+                        readOnly: false,
                       ),
                       const SizedBox(height: 20),
                       CustomTextField(
@@ -111,6 +156,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         icon: Icons.calendar_today_outlined,
                         controller: _birthdateController,
                         keyboardType: TextInputType.datetime,
+                        readOnly: false,
                       ),
                       const SizedBox(height: 20),
                       // Gender Selector

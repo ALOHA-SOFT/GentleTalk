@@ -7,6 +7,11 @@ import '../widgets/custom_text_field.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/user_type_selector.dart';
 
+import '../../../core/constants/config.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -26,11 +31,61 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _handleLogin() {
-    // TODO: Implement login API call
-    Navigator.pushReplacementNamed(context, '/home');
-  }
+  // void _handleLogin() {
+  //   // TODO: Implement login API call
+  //   Navigator.pushReplacementNamed(context, '/home');
+  // }
 
+  Future<void> _handleLogin() async {
+  // 유효성 검사 등은 생략
+
+  try {
+    final uri = Uri.parse('${AppConfig.baseUrl}/api/v1/auth/login');
+
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'username': _usernameController.text.trim(),
+        'password': _passwordController.text.trim(),
+        'userType': _selectedUserType.name, // 혹시 있으면
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+
+    final name = (data['name'] ?? '').toString();
+    final usernameFromApi = (data['username'] ?? data['id'] ?? '').toString();
+
+    final effectiveUsername = usernameFromApi.isNotEmpty
+        ? usernameFromApi
+        : _usernameController.text.trim(); // ⭐ 내가 입력한 아이디로 대체
+
+    final token = data['accessToken'];
+    final refreshToken = data['refreshToken'];
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('jwt', token); 
+    await prefs.setString('refreshToken', refreshToken);  
+    await prefs.setString('userName', name);
+    await prefs.setString('userUsername', effectiveUsername); // ⭐ 홈에서 사용하는 키
+
+    // 디버그용 로그
+    debugPrint('✅ Saved userUsername = $effectiveUsername');
+
+    Navigator.pushReplacementNamed(context, '/home');
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('로그인 실패: ${response.statusCode}')),
+    );
+  }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('서버와 통신 중 오류가 발생했습니다')),
+    );
+  }
+}
   void _navigateToSignup() {
     Navigator.pushNamed(context, '/signup');
   }
@@ -67,6 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       label: '아이디',
                       icon: Icons.person_outline,
                       controller: _usernameController,
+                      readOnly: false,
                     ),
                     const SizedBox(height: 20),
                     CustomTextField(
@@ -74,6 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       icon: Icons.lock_outline,
                       controller: _passwordController,
                       obscureText: true,
+                      readOnly: false,
                     ),
                     const SizedBox(height: 20),
                     // User Type Selector
@@ -90,7 +147,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 20),
                     // Login Button
-                    PrimaryButton(text: '로그인', onPressed: _handleLogin),
+                    PrimaryButton(
+                      text: '로그인',
+                      onPressed: () {
+                        _handleLogin();
+                      },
+                    ),
                     const SizedBox(height: 10),
                     // Signup Button
                     PrimaryButton(

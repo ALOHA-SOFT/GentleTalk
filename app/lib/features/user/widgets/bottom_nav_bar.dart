@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/colors.dart';
-import '../../../core/constants/text_styles.dart';
 
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;

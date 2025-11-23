@@ -22,7 +22,7 @@ class _FindIdScreenState extends State<FindIdScreen> {
   }
 
   void _handleFindId() {
-    // TODO: Implement find ID API call
+    // TODO: Implement find ID API call : /api/v1/users/find-username
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('아이디 찾기 기능 구현 예정')));
@@ -73,6 +73,7 @@ class _FindIdScreenState extends State<FindIdScreen> {
                       icon: Icons.email_outlined,
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
+                      readOnly: false,
                     ),
                     const SizedBox(height: 20),
                     // Find ID Button

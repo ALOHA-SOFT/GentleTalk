@@ -25,7 +25,8 @@ import 'features/negotiation/screens/opponent_response_screen.dart';
 import 'features/negotiation/screens/mediation_options_screen.dart';
 import 'features/negotiation/screens/mediation_send_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MainApp());
 }
 
