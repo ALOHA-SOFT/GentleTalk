@@ -124,7 +124,7 @@ public class AuthController {
     }
 
     /**
-     * 현재 로그인 사용자 정보 조회 (마이페이지 진입시 사용)
+     * 현재 로그인 사용자 정보 조회
      */
     @GetMapping("/me")
     @Operation(summary = "현재 사용자 정보", description = "JWT 토큰으로 현재 로그인한 사용자 정보 조회")
@@ -157,8 +157,8 @@ public class AuthController {
             userMap.put("tel", user.getTel());
             userMap.put("birth", user.getBirth());
             userMap.put("gender", user.getGender());
-            userMap.put("type", user.getType());         // 선택
-            userMap.put("address", user.getAddress());   // 선택
+            userMap.put("type", user.getType());   
+            userMap.put("address", user.getAddress()); 
             userMap.put("enabled", user.getEnabled());
 
             Map<String, Object> response = new HashMap<>();
@@ -176,7 +176,7 @@ public class AuthController {
     }
 
     /**
-     * 현재 로그인 사용자 정보 수정 (마이페이지에서 사용)
+     * 현재 로그인 사용자 정보 수정
      * Flutter 에서 보내는 body:
      *  {
      *    "username": "...",
@@ -215,11 +215,6 @@ public class AuthController {
                 ));
             }
 
-            // username/id 는 토큰 기준으로만 유지
-            // user.setUsername(user.getUsername());
-            // user.setId(user.getId());
-
-            // 수정 가능한 정보만 반영
             if (updateReq.getName() != null) {
                 user.setName(updateReq.getName());
             }
@@ -311,7 +306,6 @@ public class AuthController {
                         .body("이미 존재하는 아이디입니다.");
             }
 
-            // ⭐ NOT NULL 컬럼들 기본값 세팅
             if (users.getType() == null || users.getType().isBlank()) {
                 users.setType("USER");      // 기본 사용자 타입
             }
