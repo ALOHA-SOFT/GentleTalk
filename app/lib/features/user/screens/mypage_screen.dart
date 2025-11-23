@@ -202,7 +202,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              // 🔹 탈퇴 API 호출 자리 (DELETE /api/v1/users/me 등)
+              // 🔹 탈퇴 API 호출 자리 (DELETE /api/v1/auth/me 등)
               // 탈퇴 후 SharedPreferences 비우고 로그인 화면으로 이동 등 처리
             },
             child: const Text('탈퇴'),
