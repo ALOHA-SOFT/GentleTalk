@@ -1,13 +1,17 @@
 package com.gentle.talk.controller.v1;
 
 import com.gentle.talk.domain.core.Issue;
+import com.gentle.talk.domain.users.Users;
 import com.gentle.talk.service.core.IssueService;
+import com.gentle.talk.service.users.UserService;
 import com.github.pagehelper.PageInfo;
 import com.gentle.talk.domain.common.QueryParams;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.security.core.Authentication;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,13 +25,23 @@ import java.util.List;
 public class IssueController {
 
     private final IssueService issueService;
+    private final UserService userService;
 
     @PostMapping
     @Operation(summary = "이슈 등록", description = "새로운 협상 이슈를 등록합니다")
-    public ResponseEntity<?> register(@RequestBody Issue issue) {
+    public ResponseEntity<?> register(@RequestBody Issue issue, Authentication authentication) {
         log.info("## 이슈 등록 요청 ##");
         log.info("issue={}", issue);
 
+        String username = authentication.getName();
+        Users user = userService.selectByUsername(username);
+
+        issue.setUserNo(user.getNo());
+        // Not Null 필드 기본 값 설정
+        issue.setOpponentName(" ");
+        issue.setOpponentContact(" ");
+        issue.setIssueCode(" ");
+        
         try {
             boolean result = issueService.register(issue);
             if (result) {
