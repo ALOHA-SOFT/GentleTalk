@@ -62,6 +62,18 @@ class _LoginScreenState extends State<LoginScreen> {
         ? usernameFromApi
         : _usernameController.text.trim(); // ⭐ 내가 입력한 아이디로 대체
 
+    // 로그인 응답에서 no를 userNo로 사용
+    final user = data['user'] ?? {};
+    final int userNo = user['no'] is int
+        ? user['no'] as int
+        : int.tryParse(user['no'].toString()) ?? 0;
+
+    if (userNo <= 0) {
+      debugPrint('❌ 로그인 응답에서 user no 파싱 실패: ${data['no']}');
+    } else {
+      debugPrint('✅ 로그인 user no = $userNo');
+    }
+
     final token = data['accessToken'];
     final refreshToken = data['refreshToken'];
 
@@ -70,8 +82,10 @@ class _LoginScreenState extends State<LoginScreen> {
     await prefs.setString('refreshToken', refreshToken);  
     await prefs.setString('userName', name);
     await prefs.setString('userUsername', effectiveUsername); // ⭐ 홈에서 사용하는 키
+    await prefs.setInt('userNo', userNo);
 
     // 디버그용 로그
+    print(">>> stored userNo = ${prefs.getInt('userNo')}");
     debugPrint('✅ Saved userUsername = $effectiveUsername');
 
     Navigator.pushReplacementNamed(context, '/home');
