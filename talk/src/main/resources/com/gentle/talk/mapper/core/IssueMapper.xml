@@ -107,4 +107,11 @@
         LIMIT #{limit}
     </select>
 
+    <!-- 이슈 번호로 조회 -->
+    <select id="selectByIssueNo" resultMap="IssueMap">
+        SELECT *
+        FROM issues
+        WHERE no = #{issueNo}
+    </select>
+
 </mapper>

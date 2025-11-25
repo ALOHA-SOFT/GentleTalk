@@ -13,10 +13,12 @@ class NegotiationsProgressScreen extends StatefulWidget {
   const NegotiationsProgressScreen({super.key});
 
   @override
-  State<NegotiationsProgressScreen> createState() => _NegotiationsProgressScreenState();
+  State<NegotiationsProgressScreen> createState() =>
+      _NegotiationsProgressScreenState();
 }
 
-class _NegotiationsProgressScreenState extends State<NegotiationsProgressScreen> {
+class _NegotiationsProgressScreenState
+    extends State<NegotiationsProgressScreen> {
   List<dynamic> _issues = [];
   bool _isLoading = true;
 
@@ -118,10 +120,17 @@ class _NegotiationsProgressScreenState extends State<NegotiationsProgressScreen>
                           final item = _issues[index];
 
                           final status = (item['status'] ?? '').toString().trim();
-                          final title = (item['conflict_situation'] ?? '').toString();
-                          final rawDate = (item['created_at'] ?? '').toString();
-                          final date = rawDate.length >= 10 ? rawDate.substring(0, 10) : rawDate;
+                          final fullTitle = (item['conflictSituation'] ?? '').toString();
+                          final title = _shortenTitle(fullTitle, 20);
+                          final rawDate =
+                              (item['createdAt'] ?? '').toString();
+                          final date = rawDate.length >= 10
+                              ? rawDate.substring(0, 10)
+                              : rawDate;
+
                           final step = _statusStep(status);
+
+                          final issueNo = item['no']; // ★ 여기서 issueNo 가져옴
 
                           return _buildNegotiationCard(
                             context,
@@ -130,6 +139,7 @@ class _NegotiationsProgressScreenState extends State<NegotiationsProgressScreen>
                             date,
                             '$step/6',
                             _statusColor(status),
+                            issueNo, // ★ 전달
                           );
                         },
                       ),
@@ -161,6 +171,13 @@ class _NegotiationsProgressScreenState extends State<NegotiationsProgressScreen>
     }
   }
 
+  String _shortenTitle(String text, int maxLen) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return '제목 없음';        // 갈등 상황이 비었을 때 기본 문구
+    if (trimmed.length <= maxLen) return trimmed;
+    return trimmed.substring(0, maxLen) + '…';      // 20자 + "…" 뒤에 붙이기
+  }
+
   Widget _buildNegotiationCard(
     BuildContext context,
     String status,
@@ -168,6 +185,7 @@ class _NegotiationsProgressScreenState extends State<NegotiationsProgressScreen>
     String date,
     String progress,
     Color progressColor,
+    dynamic issueNo, // ★ int든 String이든 OK
   ) {
     double progressPercent = 0.0;
     if (progress.contains('/')) {
@@ -177,10 +195,15 @@ class _NegotiationsProgressScreenState extends State<NegotiationsProgressScreen>
 
     return GestureDetector(
       onTap: () {
+        print("📌 [Tap] issueNo = $issueNo (${issueNo.runtimeType})");
+
         Navigator.pushNamed(
           context,
           '/negotiation-detail',
-          arguments: {'status': status},
+          arguments: {
+            'status': status,
+            'issueNo': issueNo, // ★ 상세 화면으로 전달
+          },
         );
       },
       child: Container(

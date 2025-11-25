@@ -44,5 +44,8 @@ public interface IssueService extends BaseService<Issue> {
     
     // 상태 변경
     boolean updateStatus(Long issueNo, String status);
+
+    // 이슈 번호로 조회
+    Issue selectByIssueNo(Long issueNo);
     
 }

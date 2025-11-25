@@ -29,5 +29,8 @@ public interface IssueMapper extends BaseMapper<Issue> {
   
   // 최근 이슈 조회
   public List<Issue> selectRecentIssues(@Param("userNo") Long userNo, @Param("limit") int limit);
+
+  // 이슈 번호로 조회
+  public Issue selectByIssueNo(Long issueNo);
   
 }
