@@ -301,6 +301,7 @@ Widget _buildBottomButtons(BuildContext context, String status) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
       child: SizedBox(
+        width: double.infinity,
         height: 48,
         child: _OutlineButton(
           text: '삭제하기',
@@ -309,6 +310,7 @@ Widget _buildBottomButtons(BuildContext context, String status) {
       ),
     );
   }
+
 
   if (status == '분석완료') {
     return buildTwoButtons(
