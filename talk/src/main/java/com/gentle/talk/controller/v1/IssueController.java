@@ -62,7 +62,7 @@ public class IssueController {
         log.info("no={}", no);
 
         try {
-            Issue issue = issueService.selectById(no.toString());
+            Issue issue = issueService.selectByIssueNo(no);
             if (issue != null) {
                 return ResponseEntity.ok(issue);
             } else {
@@ -248,4 +248,5 @@ public class IssueController {
             return ResponseEntity.internalServerError().body("서버 오류: " + e.getMessage());
         }
     }
+
 }

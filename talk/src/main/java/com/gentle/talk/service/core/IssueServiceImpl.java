@@ -240,5 +240,13 @@ public class IssueServiceImpl extends BaseServiceImpl<Issue, IssueMapper> implem
             return false;
         }
     }
+
+    @Override
+    public Issue selectByIssueNo(Long issueNo) {
+        log.info("## 이슈 번호로 조회 ##");
+        log.info("issueNo={}", issueNo);
+        
+        return mapper.selectByIssueNo(issueNo);
+    }
     
 }
