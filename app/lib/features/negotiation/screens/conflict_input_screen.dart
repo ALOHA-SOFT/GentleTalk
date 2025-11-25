@@ -21,7 +21,8 @@ class _ConflictInputScreenState extends State<ConflictInputScreen> {
 
   int _questionStep = 0;
   String? _answer1;     
-  String? _answer2;      
+  String? _answer2;    
+  int? _issueNo;  
 
   @override
   void initState() {
@@ -41,7 +42,7 @@ class _ConflictInputScreenState extends State<ConflictInputScreen> {
     super.dispose();
   }
 
-  Future<void> _submitIssue() async {
+Future<void> _submitIssue() async {
     final first = _answer1 ?? '';
     final second = _answer2 ?? '';
 
@@ -53,7 +54,7 @@ class _ConflictInputScreenState extends State<ConflictInputScreen> {
 
       final uri = Uri.parse('${AppConfig.baseUrl}/api/v1/issues');
 
-      final body = {       
+      final body = {
         'conflictSituation': first,
         'requirements': second,
       };
@@ -72,6 +73,15 @@ class _ConflictInputScreenState extends State<ConflictInputScreen> {
       if (!mounted) return;
 
       if (res.statusCode == 201 || res.statusCode == 200) {
+        // ✅ 응답에서 issueNo 추출
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final no = data['no']; // 백엔드 Issue 객체의 PK 필드 이름이 'no'라고 가정
+
+        setState(() {
+          _issueNo = (no is int) ? no : int.tryParse(no.toString());
+          _questionStep = 2; // 분석 버튼 노출
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('갈등 상황이 저장되었습니다.')),
         );
@@ -83,6 +93,7 @@ class _ConflictInputScreenState extends State<ConflictInputScreen> {
       }
     } catch (e) {
       if (!mounted) return;
+      debugPrint('submitIssue error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('서버와 통신 중 오류가 발생했습니다')),
       );
@@ -97,7 +108,6 @@ class _ConflictInputScreenState extends State<ConflictInputScreen> {
       _messages.add(ChatMessage(text: text, isUser: true));
     });
 
-    // 스텝에 따라 답변 저장
     if (_questionStep == 0) {
       _answer1 = text;
     } else if (_questionStep == 1) {
@@ -121,11 +131,8 @@ class _ConflictInputScreenState extends State<ConflictInputScreen> {
         _scrollToBottom();
       });
     } else if (_questionStep == 1) {
-      // 두 번째 답변까지 끝 → DB 저장 호출 + 분석 버튼 노출
-      setState(() {
-        _questionStep = 2;
-      });
-      _submitIssue(); // ✅ 여기서 DB 등록
+      // 두 번째 답변까지 끝 → DB 저장 호출
+      _submitIssue(); // ✅ 여기서 DB 등록 + issueNo 세팅
     }
 
     _scrollToBottom();
@@ -144,7 +151,18 @@ class _ConflictInputScreenState extends State<ConflictInputScreen> {
   }
 
   void _handleAnalyze() {
-    Navigator.pushNamed(context, '/request-analysis');
+    if (_issueNo == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('이슈 번호를 찾을 수 없습니다. 다시 시도해주세요.')),
+      );
+      return;
+    }
+
+    Navigator.pushNamed(
+      context,
+      '/request-analysis',
+      arguments: {'issueNo': _issueNo}, // ✅ issueNo 전달
+    );
   }
 
   @override
