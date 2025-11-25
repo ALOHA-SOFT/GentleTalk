@@ -22,11 +22,13 @@ class _NegotiationsProgressScreenState
   List<dynamic> _issues = [];
   bool _isLoading = true;
 
+  /// 진행 중으로 볼 상태 목록
   final List<String> progressStatuses = [
     '대기',
     '분석중',
     '분석완료',
     '상대방대기',
+    '상대방응답',
     '중재안제시',
   ];
 
@@ -68,24 +70,30 @@ class _NegotiationsProgressScreenState
     }
   }
 
+  /// 상태별 진행 스텝 (총 6단계)
   int _statusStep(String status) {
     switch (status.trim()) {
       case '대기':
         return 1;
       case '분석중':
         return 2;
+
       case '분석완료':
+      case '분석실패':
         return 3;
+
       case '상대방대기':
         return 4;
-      case '중재안제시':
+      case '상대방응답':
         return 5;
-      case '협상완료':
+      case '중재안제시':
         return 6;
+
       default:
         return 1;
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -115,12 +123,15 @@ class _NegotiationsProgressScreenState
                       constraints: const BoxConstraints(maxWidth: 345),
                       child: ListView.separated(
                         itemCount: _issues.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 25),
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: 25),
                         itemBuilder: (context, index) {
                           final item = _issues[index];
 
-                          final status = (item['status'] ?? '').toString().trim();
-                          final fullTitle = (item['conflictSituation'] ?? '').toString();
+                          final status =
+                              (item['status'] ?? '').toString().trim();
+                          final fullTitle =
+                              (item['conflictSituation'] ?? '').toString();
                           final title = _shortenTitle(fullTitle, 20);
                           final rawDate =
                               (item['createdAt'] ?? '').toString();
@@ -129,8 +140,7 @@ class _NegotiationsProgressScreenState
                               : rawDate;
 
                           final step = _statusStep(status);
-
-                          final issueNo = item['no']; // ★ 여기서 issueNo 가져옴
+                          final issueNo = item['no'];
 
                           return _buildNegotiationCard(
                             context,
@@ -139,7 +149,7 @@ class _NegotiationsProgressScreenState
                             date,
                             '$step/6',
                             _statusColor(status),
-                            issueNo, // ★ 전달
+                            issueNo,
                           );
                         },
                       ),
@@ -153,19 +163,22 @@ class _NegotiationsProgressScreenState
     );
   }
 
+  /// 상태 컬러 (아이콘/프로그레스바/뱃지)
   Color _statusColor(String? rawStatus) {
     final status = (rawStatus ?? '').trim();
     switch (status) {
       case '분석중':
-        return const Color(0xFF001497);
+        return const Color(0xFF001497); // 딥블루
       case '대기':
-        return const Color(0xFF409CFF);
+        return const Color(0xFF409CFF); // 라이트블루
       case '분석완료':
-        return const Color(0xFF6EBD82);
+        return const Color(0xFF6EBD82); // 그린
       case '중재안제시':
-        return const Color(0xFFB452FF);
+        return const Color(0xFFB452FF); // 퍼플
       case '상대방대기':
-        return const Color(0xFFFFB340);
+        return const Color(0xFFFFB340); // 옐로우/오렌지
+      case '상대방응답':
+        return const Color(0xFFD96E40); // ✅ 진한 오렌지
       default:
         return Colors.grey;
     }
@@ -173,9 +186,9 @@ class _NegotiationsProgressScreenState
 
   String _shortenTitle(String text, int maxLen) {
     final trimmed = text.trim();
-    if (trimmed.isEmpty) return '제목 없음';        // 갈등 상황이 비었을 때 기본 문구
+    if (trimmed.isEmpty) return '제목 없음';
     if (trimmed.length <= maxLen) return trimmed;
-    return trimmed.substring(0, maxLen) + '…';      // 20자 + "…" 뒤에 붙이기
+    return '${trimmed.substring(0, maxLen)}…';
   }
 
   Widget _buildNegotiationCard(
@@ -185,7 +198,7 @@ class _NegotiationsProgressScreenState
     String date,
     String progress,
     Color progressColor,
-    dynamic issueNo, // ★ int든 String이든 OK
+    dynamic issueNo,
   ) {
     double progressPercent = 0.0;
     if (progress.contains('/')) {
@@ -195,14 +208,14 @@ class _NegotiationsProgressScreenState
 
     return GestureDetector(
       onTap: () {
-        print("📌 [Tap] issueNo = $issueNo (${issueNo.runtimeType})");
+        debugPrint("📌 [Tap] issueNo = $issueNo (${issueNo.runtimeType})");
 
         Navigator.pushNamed(
           context,
           '/negotiation-detail',
           arguments: {
             'status': status,
-            'issueNo': issueNo, // ★ 상세 화면으로 전달
+            'issueNo': issueNo,
           },
         );
       },

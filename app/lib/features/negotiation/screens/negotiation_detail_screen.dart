@@ -15,7 +15,7 @@ class NegotiationDetailScreen extends StatefulWidget {
 }
 
 class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
-  String? _issueNo;           // issues.no
+  String? _issueNo; // issues.no
   String _initialStatus = '대기'; // 목록에서 넘어온 status
   Future<Map<String, dynamic>>? _detailFuture;
 
@@ -31,7 +31,8 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
       _initialStatus = (args['status'] ?? '대기').toString();
       _issueNo = args['issueNo']?.toString(); // 목록에서 넘겨준 no
 
-      debugPrint('NegotiationDetail => issueNo=$_issueNo, status=$_initialStatus');
+      debugPrint(
+          'NegotiationDetail => issueNo=$_issueNo, status=$_initialStatus');
 
       if (_issueNo != null) {
         _detailFuture = _fetchIssueDetail(_issueNo!);
@@ -42,7 +43,7 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
   /// issues 테이블 상세 조회 API
   Future<Map<String, dynamic>> _fetchIssueDetail(String issueNo) async {
     final uri = Uri.parse('${AppConfig.baseUrl}/api/v1/issues/$issueNo');
-    debugPrint('📡 GET $uri');   // << 여기
+    debugPrint('📡 GET $uri');
     final res = await http.get(uri);
 
     if (res.statusCode == 200) {
@@ -96,6 +97,7 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
           String requirements = '이런 요구조건이 필요합니다.';
           String analysisResult = '';
           String mediationProposal = '';
+          String opponentRequirements = ''; // ✅ 상대방 응답 메시지
 
           String? errorMessage;
           final isLoading = snapshot.connectionState == ConnectionState.waiting;
@@ -113,12 +115,14 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
             status = (data['status'] ?? status).toString();
             conflictSituation =
                 (data['conflictSituation'] ?? conflictSituation).toString();
-            requirements =
-                (data['requirements'] ?? requirements).toString();
+            requirements = (data['requirements'] ?? requirements).toString();
             analysisResult =
                 (data['analysisResult'] ?? analysisResult).toString();
             mediationProposal =
                 (data['mediationProposal'] ?? mediationProposal).toString();
+            opponentRequirements =
+                (data['opponentRequirements'] ?? opponentRequirements)
+                    .toString(); // ✅ 여기
           }
 
           final Color statusColor = _getStatusColor(status);
@@ -140,6 +144,16 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
                   : status == '분석실패'
                       ? '분석에 실패했습니다.'
                       : '분석내용에 맞춘 협상 메시지 입니다.';
+
+          // 상대방 응답/중재안제시에서 쓸 문구
+          final String opponentMsgText =
+              opponentRequirements.isNotEmpty
+                  ? opponentRequirements
+                  : '상대방의 응답 메시지가 아직 등록되지 않았습니다.';
+
+          final String mediationText = mediationProposal.isNotEmpty
+              ? mediationProposal
+              : '중재안이 아직 등록되지 않았습니다.';
 
           return Column(
             children: [
@@ -177,6 +191,7 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
                         ],
 
                         const SizedBox(height: 10),
+                        // 진행 상태 바
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 20,
@@ -210,10 +225,40 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
                           ),
                         ),
 
-
                         const SizedBox(height: 25),
 
-                        // Info Sections
+                        // ✅ 상태별 특별 섹션 배치
+
+                        // 1) 상대방응답: 최상단에 "상대방 응답 메시지"
+                        if (status == '상대방응답') ...[
+                          _InfoSection(
+                            title: '상대방 응답 메시지',
+                            content: opponentMsgText,
+                            titleColor: const Color(0xFFD96E40),
+                            borderColor: const Color(0xFFD96E40),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
+
+                        // 2) 중재안제시: 최종 협상안 + 그 아래 상대방 응답 메시지
+                        if (status == '중재안제시') ...[
+                          _InfoSection(
+                            title: '최종 협상안',
+                            content: mediationText,
+                            titleColor: const Color(0xFFB452FF),
+                            borderColor: const Color(0xFFB452FF),
+                          ),
+                          const SizedBox(height: 10),
+                          _InfoSection(
+                            title: '상대방 응답 메시지',
+                            content: opponentMsgText,
+                            titleColor: const Color(0xFFD96E40),
+                            borderColor: const Color(0xFFD96E40),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
+
+                        // 공통 영역들
                         _InfoSection(
                           title: '갈등 상황',
                           content: conflictSituation,
@@ -237,15 +282,18 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
                         ),
                         const SizedBox(height: 10),
 
-                        _InfoSection(
-                          title: '협상 메시지',
-                          content: negotiationText,
-                          textColor: status == '분석실패'
-                              ? const Color(0xFFF83062)
-                              : (status == '대기' || status == '분석중')
-                                  ? const Color(0xFF888888)
-                                  : AppColors.textPrimary,
-                        ),
+                        if (status != '중재안제시') ...[
+                          _InfoSection(
+                            title: '협상 메시지',
+                            content: negotiationText,
+                            textColor: status == '분석실패'
+                                ? const Color(0xFFF83062)
+                                : (status == '대기' || status == '분석중')
+                                    ? const Color(0xFF888888)
+                                    : AppColors.textPrimary,
+                          ),
+                          const SizedBox(height: 10),
+                        ],
                       ],
                     ),
                   ),
@@ -259,123 +307,128 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
     );
   }
 
-Widget _buildBottomButtons(BuildContext context, String status) {
-  Widget buildTwoButtons(Widget topBtn, Widget bottomBtn) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            height: 48,
-            child: topBtn,
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 48,
-            child: bottomBtn,
-          ),
-        ],
-      ),
-    );
-  }
-
-  if (status == '대기') {
-    return buildTwoButtons(
-      _GradientButton(
-        text: '✨ 요청 분석',
-        onPressed: () => Navigator.pushNamed(
-          context,
-          '/request-analysis',
-          arguments: {'issueNo': _issueNo},
+  // 하단 버튼 영역
+  Widget _buildBottomButtons(BuildContext context, String status) {
+    Widget buildTwoButtons(Widget topBtn, Widget bottomBtn) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: 48,
+              child: topBtn,
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 48,
+              child: bottomBtn,
+            ),
+          ],
         ),
-      ),
-      _OutlineButton(
-        text: '삭제하기',
-        onPressed: () => Navigator.pop(context),
-      ),
-    );
-  }
+      );
+    }
 
-  if (status == '분석중' || status == '상대방대기') {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-      child: SizedBox(
-        width: double.infinity,
-        height: 48,
-        child: _OutlineButton(
+    if (status == '대기') {
+      return buildTwoButtons(
+        _GradientButton(
+          text: '✨ 요청 분석',
+          onPressed: () => Navigator.pushNamed(
+            context,
+            '/request-analysis',
+            arguments: {'issueNo': _issueNo},
+          ),
+        ),
+        _OutlineButton(
           text: '삭제하기',
           onPressed: () => Navigator.pop(context),
         ),
-      ),
-    );
-  }
+      );
+    }
 
-
-  if (status == '분석완료') {
-    return buildTwoButtons(
-      _GradientButton(
-        text: '발송하기',
-        onPressed: () => Navigator.pushNamed(
-          context,
-          '/send-request',
-          arguments: {'issueNo': _issueNo},
+    if (status == '분석중' || status == '상대방대기') {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        child: SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: _OutlineButton(
+            text: '삭제하기',
+            onPressed: () => Navigator.pop(context),
+          ),
         ),
-      ),
-      _OutlineButton(
-        text: '삭제하기',
-        onPressed: () => Navigator.pop(context),
-      ),
-    );
-  }
+      );
+    }
 
-  if (status == '분석실패') {
-    return buildTwoButtons(
-      _SpecialButton(
-        text: '✨ 다시 분석 요청하기',
-        onPressed: () => Navigator.pushNamed(
-          context,
-          '/request-analysis',
-          arguments: {'issueNo': _issueNo},
+    if (status == '분석완료') {
+      return buildTwoButtons(
+        _GradientButton(
+          text: '발송하기',
+          onPressed: () => Navigator.pushNamed(
+            context,
+            '/send-request',
+            arguments: {'issueNo': _issueNo},
+          ),
         ),
-      ),
-      _OutlineButton(
-        text: '삭제하기',
-        onPressed: () => Navigator.pop(context),
-      ),
-    );
-  }
-
-  if (status == '상대방응답' || status == '중재안제시') {
-    return buildTwoButtons(
-      _SpecialButton(
-        text: '✨ 중재안 분석 요청하기',
-        onPressed: () => Navigator.pushNamed(
-          context,
-          '/request-analysis',
-          arguments: {'issueNo': _issueNo},
+        _OutlineButton(
+          text: '삭제하기',
+          onPressed: () => Navigator.pop(context),
         ),
-      ),
-      _OutlineButton(
-        text: '삭제하기',
-        onPressed: () => Navigator.pop(context),
-      ),
-    );
-  }
+      );
+    }
 
-  return const SizedBox.shrink();
+    if (status == '분석실패') {
+      return buildTwoButtons(
+        _SpecialButton(
+          text: '✨ 다시 분석 요청하기',
+          onPressed: () => Navigator.pushNamed(
+            context,
+            '/request-analysis',
+            arguments: {'issueNo': _issueNo},
+          ),
+        ),
+        _OutlineButton(
+          text: '삭제하기',
+          onPressed: () => Navigator.pop(context),
+        ),
+      );
+    }
+
+    if (status == '상대방응답' || status == '중재안제시') {
+      return buildTwoButtons(
+        _SpecialButton(
+          text: '✨ 중재안 분석 요청하기',
+          onPressed: () => Navigator.pushNamed(
+            context,
+            '/request-analysis',
+            arguments: {'issueNo': _issueNo},
+          ),
+        ),
+        _OutlineButton(
+          text: '삭제하기',
+          onPressed: () => Navigator.pop(context),
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
 }
-}
 
+/// 공통 정보 박스
 class _InfoSection extends StatelessWidget {
   final String title;
   final String content;
   final Color textColor;
+  final Color? borderColor; // ✅ 추가
+  final Color? titleColor;  // ✅ 추가
 
   const _InfoSection({
     required this.title,
     required this.content,
     this.textColor = const Color(0xFF282B35),
+    this.borderColor,
+    this.titleColor,
   });
 
   @override
@@ -385,7 +438,9 @@ class _InfoSection extends StatelessWidget {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFF1F1F2)),
+        border: Border.all(
+          color: borderColor ?? const Color(0xFFF1F1F2),
+        ),
         borderRadius: BorderRadius.circular(5),
         boxShadow: [
           BoxShadow(
@@ -405,7 +460,7 @@ class _InfoSection extends StatelessWidget {
               title,
               style: AppTextStyles.body.copyWith(
                 fontSize: 16,
-                color: AppColors.primary,
+                color: titleColor ?? AppColors.primary,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -414,7 +469,8 @@ class _InfoSection extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
               child: Text(
                 content,
                 style: AppTextStyles.body.copyWith(
@@ -544,8 +600,7 @@ class _OutlineButton extends StatelessWidget {
         ),
         child: Text(
           text,
-          style:
-              AppTextStyles.button.copyWith(color: AppColors.textPrimary),
+          style: AppTextStyles.button.copyWith(color: AppColors.textPrimary),
         ),
       ),
     );
