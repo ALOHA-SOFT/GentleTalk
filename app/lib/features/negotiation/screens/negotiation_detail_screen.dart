@@ -283,7 +283,7 @@ Widget _buildBottomButtons(BuildContext context, String status) {
   if (status == '대기') {
     return buildTwoButtons(
       _GradientButton(
-        text: '요청 분석',
+        text: '✨ 요청 분석',
         onPressed: () => Navigator.pushNamed(
           context,
           '/request-analysis',
@@ -332,7 +332,7 @@ Widget _buildBottomButtons(BuildContext context, String status) {
   if (status == '분석실패') {
     return buildTwoButtons(
       _SpecialButton(
-        text: '다시 분석 요청하기',
+        text: '✨ 다시 분석 요청하기',
         onPressed: () => Navigator.pushNamed(
           context,
           '/request-analysis',
@@ -349,7 +349,7 @@ Widget _buildBottomButtons(BuildContext context, String status) {
   if (status == '상대방응답' || status == '중재안제시') {
     return buildTwoButtons(
       _SpecialButton(
-        text: '중재안 분석 요청하기',
+        text: '✨ 중재안 분석 요청하기',
         onPressed: () => Navigator.pushNamed(
           context,
           '/request-analysis',

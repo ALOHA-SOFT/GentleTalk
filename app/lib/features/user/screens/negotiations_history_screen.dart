@@ -13,7 +13,8 @@ class NegotiationsHistoryScreen extends StatefulWidget {
   const NegotiationsHistoryScreen({super.key});
 
   @override
-  State<NegotiationsHistoryScreen> createState() => _NegotiationsHistoryScreenState();
+  State<NegotiationsHistoryScreen> createState() =>
+      _NegotiationsHistoryScreenState();
 }
 
 class _NegotiationsHistoryScreenState extends State<NegotiationsHistoryScreen> {
@@ -102,10 +103,16 @@ class _NegotiationsHistoryScreenState extends State<NegotiationsHistoryScreen> {
                             children: [
                               for (var item in _issues)
                                 Padding(
-                                  padding: const EdgeInsets.only(bottom: 10.0),
+                                  padding:
+                                      const EdgeInsets.only(bottom: 10.0),
                                   child: _buildHistoryCard(
+                                    // 🔹 여기서 issueNo 같이 넘겨줌
+                                    item['issueNo'] ??
+                                        item['no'] ??
+                                        item['id'],
                                     _safeDate(item['createdAt']),
-                                    (item['conflictSituation'] ?? '').toString(),
+                                    (item['conflictSituation'] ?? '')
+                                        .toString(),
                                     (item['status'] ?? '').toString(),
                                   ),
                                 ),
@@ -126,7 +133,9 @@ class _NegotiationsHistoryScreenState extends State<NegotiationsHistoryScreen> {
     );
   }
 
-    Widget _buildHistoryCard(String date, String title, String status) {
+  // 🔹 issueNo 추가된 버전
+  Widget _buildHistoryCard(
+      dynamic issueNo, String date, String title, String status) {
     final isCompleted = status == '협상완료';
     final isFailed = status == '협상결렬';
 
@@ -147,6 +156,7 @@ class _NegotiationsHistoryScreenState extends State<NegotiationsHistoryScreen> {
             context,
             '/negotiation-result',
             arguments: {
+              'issueNo': issueNo,
               'date': date,
               'title': title,
               'status': status,
@@ -271,4 +281,4 @@ class _NegotiationsHistoryScreenState extends State<NegotiationsHistoryScreen> {
       ),
     );
   }
-  }
+}
