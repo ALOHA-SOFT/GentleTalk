@@ -40,7 +40,10 @@ public class IssueController {
         // Not Null 필드 기본 값 설정
         issue.setOpponentName(" ");
         issue.setOpponentContact(" ");
-        issue.setIssueCode(" ");
+        // issue_code 비어 있으면 자동 생성
+        if (issue.getIssueCode() == null || issue.getIssueCode().isBlank()) {
+                issue.setIssueCode(generateIssueCode());
+        }
         
         try {
             boolean result = issueService.register(issue);
@@ -53,6 +56,11 @@ public class IssueController {
             log.error("이슈 등록 중 오류 발생", e);
             return ResponseEntity.internalServerError().body("서버 오류: " + e.getMessage());
         }
+    }
+
+    private String generateIssueCode() {
+    // 형식은 원하는 대로: 날짜 + 시퀀스, UUID 등
+    return "ISSUE-" + System.currentTimeMillis();
     }
 
     @GetMapping("/{no}")
