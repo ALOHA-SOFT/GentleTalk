@@ -104,8 +104,8 @@ class _NegotiationsHistoryScreenState extends State<NegotiationsHistoryScreen> {
                                 Padding(
                                   padding: const EdgeInsets.only(bottom: 10.0),
                                   child: _buildHistoryCard(
-                                    _safeDate(item['created_at']),
-                                    (item['conflict_situation'] ?? '').toString(),
+                                    _safeDate(item['createdAt']),
+                                    (item['conflictSituation'] ?? '').toString(),
                                     (item['status'] ?? '').toString(),
                                   ),
                                 ),
