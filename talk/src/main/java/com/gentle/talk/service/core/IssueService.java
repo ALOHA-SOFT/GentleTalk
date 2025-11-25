@@ -47,5 +47,7 @@ public interface IssueService extends BaseService<Issue> {
 
     // 이슈 번호로 조회
     Issue selectByIssueNo(Long issueNo);
-    
+ 
+    // 요약 분석 요청
+    Issue analyzeIssue(Long issueNo);
 }

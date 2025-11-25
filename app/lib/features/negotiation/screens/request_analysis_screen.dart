@@ -1,9 +1,90 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
+import '../../../core/constants/config.dart'; // baseUrl 사용
 
-class RequestAnalysisScreen extends StatelessWidget {
+class RequestAnalysisScreen extends StatefulWidget {
   const RequestAnalysisScreen({super.key});
+
+  @override
+  State<RequestAnalysisScreen> createState() => _RequestAnalysisScreenState();
+}
+
+class _RequestAnalysisScreenState extends State<RequestAnalysisScreen> {
+  bool _initialized = false;
+
+  bool _isLoading = true;
+  String? _errorMessage;
+  String? _analysisResult;
+  String? _issueNo; // arguments에서 받아올 값
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+
+    // ✅ 이전 화면에서 넘겨준 arguments 받기 (예: {'issueNo': 'TEST001'})
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+    _issueNo = args?['issueNo']?.toString();
+
+    _fetchAnalysis();
+  }
+
+  Future<void> _fetchAnalysis() async {
+    if (_issueNo == null) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = '이슈 번호가 전달되지 않았습니다.';
+      });
+      return;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('accessToken'); // 토큰 쓰고 있으면
+
+      final uri = Uri.parse('${AppConfig.baseUrl}/api/v1/issues/$_issueNo/analyze');
+
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+
+      final response = await http.post(uri, headers: headers);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        // ✅ 백엔드 Issue 엔티티 JSON 구조에 맞춰서 필드명 확인
+        // 예: { "id": "...", "conflictSituation": "...", "requirements": "...", "analysisResult": "..." }
+        final analysis =
+            data['analysisResult'] ?? data['analysis_result'] ?? '';
+
+        setState(() {
+          _analysisResult =
+              (analysis as String).isNotEmpty ? analysis : '분석 결과가 없습니다.';
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = '서버 오류 (${response.statusCode})';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = '요청 중 오류가 발생했습니다.\n$e';
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,13 +113,12 @@ class RequestAnalysisScreen extends StatelessWidget {
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 345),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 20),
-                        // Bot message
-                        _buildBotBubble('안젠틀님의, \n요구조건을 고려하여 분석한 결과입니다.'),
+                        _buildBotBubble('안젠틀님의,\n요구조건을 고려하여 분석한 결과입니다.'),
                         const SizedBox(height: 12),
-                        // Analysis result with gradient
-                        _buildAnalysisResult(),
+                        _buildBody(), // ✅ 로딩/에러/결과 처리
                         const SizedBox(height: 30),
                       ],
                     ),
@@ -46,7 +126,6 @@ class RequestAnalysisScreen extends StatelessWidget {
                 ),
               ),
             ),
-            // Bottom button
             Padding(
               padding: const EdgeInsets.all(24.0),
               child: _buildPrimaryButton(
@@ -58,6 +137,32 @@ class RequestAnalysisScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  // 로딩/에러/결과를 한 번에 처리하는 위젯
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 40.0),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 20.0),
+        child: Text(
+          _errorMessage!,
+          style: AppTextStyles.body.copyWith(
+            fontSize: 14,
+            color: Colors.red,
+          ),
+        ),
+      );
+    }
+
+    // 정상 결과
+    return _buildAnalysisResult(_analysisResult ?? '분석 결과가 없습니다.');
   }
 
   Widget _buildBotBubble(String text) {
@@ -94,15 +199,16 @@ class RequestAnalysisScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAnalysisResult() {
+  // 🔥 분석 결과를 서버에서 받아온 텍스트로 표시
+  Widget _buildAnalysisResult(String resultText) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
-            Color(0xCC46D2FD), // 80% opacity
-            Color(0xCC5351F0), // 80% opacity
+            Color(0xCC46D2FD),
+            Color(0xCC5351F0),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -122,20 +228,7 @@ class RequestAnalysisScreen extends StatelessWidget {
         ],
       ),
       child: Text(
-        '''⚖️ 주요 쟁점
-교통사고 이후 합의금 산정 기준에 대한 의견 불일치
-치료비 및 후유증 보상 범위에 대한 이견
-보험사 측의 지연된 대응과 불충분한 설명
-
-💬 요구 조건
-실제 치료비와 통원비 전액 보상
-후유증 가능성에 따른 추가 합의금 반영
-신속하고 투명한 합의 절차 진행
-
-📚 제시 근거
-병원 진단서 및 치료 내역서 제출 완료
-동일 사례 평균 합의금 데이터 비교
-보험사 약관 내 손해배상 기준 조항 근거 제시''',
+        resultText,
         style: AppTextStyles.body.copyWith(
           fontSize: 14,
           height: 1.5,
