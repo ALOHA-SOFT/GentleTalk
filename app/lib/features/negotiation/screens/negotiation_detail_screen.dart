@@ -198,7 +198,7 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              const SizedBox(width: 10),
+                              const SizedBox(width: 175),
                               Text(
                                 status,
                                 style: AppTextStyles.body.copyWith(
