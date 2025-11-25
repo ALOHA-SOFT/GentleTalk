@@ -171,16 +171,12 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
                           ),
                           const SizedBox(height: 8),
                         ],
-
-                        // 로딩 표시 (옵션)
                         if (isLoading) ...[
                           const LinearProgressIndicator(),
                           const SizedBox(height: 8),
                         ],
 
                         const SizedBox(height: 10),
-
-                        // Status Badge (기존 UI 유지)
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 20,
@@ -190,8 +186,9 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
                             color: statusColor,
                             borderRadius: BorderRadius.circular(8),
                           ),
+                          width: double.infinity,
                           child: Row(
-                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
                                 '진행 상태',
@@ -201,7 +198,6 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              const SizedBox(width: 175),
                               Text(
                                 status,
                                 style: AppTextStyles.body.copyWith(
@@ -214,9 +210,10 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
                           ),
                         ),
 
+
                         const SizedBox(height: 25),
 
-                        // Info Sections (issues 테이블 값 연동)
+                        // Info Sections
                         _InfoSection(
                           title: '갈등 상황',
                           content: conflictSituation,
@@ -254,7 +251,6 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
                   ),
                 ),
               ),
-              // Bottom Buttons (status에 따라 기존 그대로)
               _buildBottomButtons(context, status),
             ],
           );
@@ -263,119 +259,110 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
     );
   }
 
-  Widget _buildBottomButtons(BuildContext context, String status) {
-    if (status == '대기') {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-        child: Row(
-          children: [
-            Expanded(
-              child: _GradientButton(
-                text: '요청 분석',
-                onPressed: () => Navigator.pushNamed(
-                  context,
-                  '/request-analysis',
-                  arguments: {'issueNo': _issueNo},
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _OutlineButton(
-                text: '삭제하기',
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-          ],
+Widget _buildBottomButtons(BuildContext context, String status) {
+  Widget buildTwoButtons(Widget topBtn, Widget bottomBtn) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            height: 48,
+            child: topBtn,
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 48,
+            child: bottomBtn,
+          ),
+        ],
+      ),
+    );
+  }
+
+  if (status == '대기') {
+    return buildTwoButtons(
+      _GradientButton(
+        text: '요청 분석',
+        onPressed: () => Navigator.pushNamed(
+          context,
+          '/request-analysis',
+          arguments: {'issueNo': _issueNo},
         ),
-      );
-    } else if (status == '분석중' || status == '상대방대기') {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      ),
+      _OutlineButton(
+        text: '삭제하기',
+        onPressed: () => Navigator.pop(context),
+      ),
+    );
+  }
+
+  if (status == '분석중' || status == '상대방대기') {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      child: SizedBox(
+        height: 48,
         child: _OutlineButton(
           text: '삭제하기',
           onPressed: () => Navigator.pop(context),
         ),
-      );
-    } else if (status == '분석완료') {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-        child: Row(
-          children: [
-            Expanded(
-              child: _GradientButton(
-                text: '발송하기',
-                onPressed: () => Navigator.pushNamed(
-                  context,
-                  '/send-request',
-                  arguments: {'issueNo': _issueNo},
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _OutlineButton(
-                text: '삭제하기',
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-          ],
-        ),
-      );
-    } else if (status == '분석실패') {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-        child: Row(
-          children: [
-            Expanded(
-              child: _SpecialButton(
-                text: '✨다시 분석 요청하기',
-                onPressed: () => Navigator.pushNamed(
-                  context,
-                  '/request-analysis',
-                  arguments: {'issueNo': _issueNo},
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _OutlineButton(
-                text: '삭제하기',
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-          ],
-        ),
-      );
-    } else if (status == '상대방응답' || status == '중재안제시') {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-        child: Row(
-          children: [
-            Expanded(
-              child: _SpecialButton(
-                text: '✨중재안 분석 요청하기',
-                onPressed: () => Navigator.pushNamed(
-                  context,
-                  '/request-analysis',
-                  arguments: {'issueNo': _issueNo},
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _OutlineButton(
-                text: '삭제하기',
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return const SizedBox.shrink();
+      ),
+    );
   }
+
+  if (status == '분석완료') {
+    return buildTwoButtons(
+      _GradientButton(
+        text: '발송하기',
+        onPressed: () => Navigator.pushNamed(
+          context,
+          '/send-request',
+          arguments: {'issueNo': _issueNo},
+        ),
+      ),
+      _OutlineButton(
+        text: '삭제하기',
+        onPressed: () => Navigator.pop(context),
+      ),
+    );
+  }
+
+  if (status == '분석실패') {
+    return buildTwoButtons(
+      _SpecialButton(
+        text: '다시 분석 요청하기',
+        onPressed: () => Navigator.pushNamed(
+          context,
+          '/request-analysis',
+          arguments: {'issueNo': _issueNo},
+        ),
+      ),
+      _OutlineButton(
+        text: '삭제하기',
+        onPressed: () => Navigator.pop(context),
+      ),
+    );
+  }
+
+  if (status == '상대방응답' || status == '중재안제시') {
+    return buildTwoButtons(
+      _SpecialButton(
+        text: '중재안 분석 요청하기',
+        onPressed: () => Navigator.pushNamed(
+          context,
+          '/request-analysis',
+          arguments: {'issueNo': _issueNo},
+        ),
+      ),
+      _OutlineButton(
+        text: '삭제하기',
+        onPressed: () => Navigator.pop(context),
+      ),
+    );
+  }
+
+  return const SizedBox.shrink();
+}
 }
 
 class _InfoSection extends StatelessWidget {
