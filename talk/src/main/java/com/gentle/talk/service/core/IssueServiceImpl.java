@@ -1,6 +1,7 @@
 package com.gentle.talk.service.core;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,11 +15,21 @@ import com.gentle.talk.service.BaseServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+
+import org.springframework.web.reactive.function.client.WebClient;
+
 
 @Slf4j
 @Service
 public class IssueServiceImpl extends BaseServiceImpl<Issue, IssueMapper> implements IssueService {
+
+    @Value("${openai.api-key:}")
+    private String apiKey;
+
+    @Value("${openai.model:gpt-4o-mini}")
+    private String model;
 
     @Autowired
     IssueMapper mapper;
@@ -248,5 +259,109 @@ public class IssueServiceImpl extends BaseServiceImpl<Issue, IssueMapper> implem
         
         return mapper.selectByIssueNo(issueNo);
     }
+
+    @Override
+    @Transactional
+    public Issue analyzeIssue(Long issueNo) {
+        log.info("## AI - 요약 분석 요청 ##");
+        log.info("issueNo={}", issueNo);
+
+        Issue issue = mapper.selectByIssueNo(issueNo);
+        if (issue == null) {
+            throw new IllegalArgumentException("해당 ID의 이슈를 찾을 수 없습니다. issueNo=" + issueNo);
+        }
+
+        String conflict = issue.getConflictSituation();
+        String requirements = issue.getRequirements();
+
+        if (conflict == null || conflict.isBlank() ||
+            requirements == null || requirements.isBlank()) {
+            throw new IllegalStateException("conflict_situation 또는 requirements가 비어 있습니다. issueNo=" + issueNo);
+        }
+
+        String analysisResult = "";   // ← 기본값 초기화
+
+        try {
+            // ----- AI 프롬프트 구성 -----
+            String prompt = """
+                    아래 두 가지 정보를 바탕으로 갈등 상황을 명확하게 정리된 형태로 분석해 주세요.
+
+                    1) 갈등 상황(conflict_situation):
+                    %s
+
+                    2) 요구 조건(requirements):
+                    %s
+
+                    아래의 출력 형식을 반드시 그대로 유지해 주세요.
+
+                    출력 형식:
+                    ⚖️ 주요 쟁점
+                    - 핵심 쟁점 3~5개를 간결하게 불릿 형태로 정리
+                    - 문장은 짧고 명확하게
+                    - 사례, 원인, 갈등 포인트 중심
+
+                    💬 요구 조건
+                    - 사용자의 핵심 요구 2~4가지 정리
+                    - 실제 필요 / 원하는 결과 중심으로 요약
+
+                    📚 제시 근거
+                    - 근거가 될 수 있는 정보, 상황, 논리를 2~4개 작성
+                    - 객관적 자료나 일반적인 기준을 예시로 포함
+
+                    주의사항:
+                    - 절대로 다른 문구, 인삿말, 서론을 넣지 않는다.
+                    - 제목(⚖️ 💬 📚)은 그대로 출력한다.
+                    - Markdown 불릿(-)만 사용한다.
+                    - 불필요한 설명 없이 리스트만 출력한다.
+                    """.formatted(conflict, requirements);
+
+            // ----- WebClient 호출 -----
+            WebClient webClient = WebClient.builder()
+                    .baseUrl("https://api.openai.com/v1/chat/completions")
+                    .defaultHeader("Authorization", "Bearer " + apiKey)
+                    .defaultHeader("Content-Type", "application/json")
+                    .build();
+
+            Map<String, Object> requestBody = Map.of(
+                    "model", model,
+                    "messages", List.of(
+                            Map.of("role", "system", "content", "You are a helpful Korean counselor."),
+                            Map.of("role", "user", "content", prompt)
+                    ),
+                    "temperature", 0.3
+            );
+
+            Map<String, Object> response = webClient.post()
+                    .bodyValue(requestBody)
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block();
+
+            List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
+            String content = (String) ((Map<String, Object>) choices.get(0).get("message")).get("content");
+
+            analysisResult = content.trim();
+
+            // 정상 처리
+            issue.setStatus("분석완료");
+
+        } catch (Exception e) {
+            log.error("AI 분석 중 오류 발생 issueNo={}", issueNo, e);
+
+            issue.setAnalysisResult("AI 분석 실패: " + e.getMessage());
+            issue.setStatus("분석실패");
+        }
+
+        // 공통: DB 업데이트
+        issue.setAnalysisResult(analysisResult);
+        
+        int updatedRows = mapper.updateAnalysisResult(issue);
+        if (updatedRows == 0) {
+            throw new IllegalStateException("analysis_result 업데이트 실패. issueNo=" + issueNo);
+        }
+        return mapper.selectByIssueNo(issueNo);
+    }
+
+
     
 }

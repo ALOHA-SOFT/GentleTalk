@@ -32,5 +32,8 @@ public interface IssueMapper extends BaseMapper<Issue> {
 
   // 이슈 번호로 조회
   public Issue selectByIssueNo(Long issueNo);
+
+  // 분석 결과 및 상태 업데이트
+  public int updateAnalysisResult(Issue issue);
   
 }

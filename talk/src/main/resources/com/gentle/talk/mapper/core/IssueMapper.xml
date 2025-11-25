@@ -114,4 +114,13 @@
         WHERE no = #{issueNo}
     </select>
 
+    <!-- 분석 결과 및 상태 업데이트 -->
+    <update id="updateAnalysisResult">
+        UPDATE issues
+        SET 
+        analysis_result = #{analysisResult},
+        status = #{status}
+        WHERE no = #{no}
+    </update>
+
 </mapper>

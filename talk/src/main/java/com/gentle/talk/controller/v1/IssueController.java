@@ -249,4 +249,26 @@ public class IssueController {
         }
     }
 
+    /**
+     * conflict_situation, requirements
+     * 요약 + 핵심 쟁점 리스트(analaysis_result)를 반환하는 엔드포인트
+     */
+    @PostMapping("/{no}/analyze")
+    @Operation(summary = "요약 분석", description = "ai를 통해 이슈의 요약과 핵심 쟁점을 분석합니다")
+    public ResponseEntity<?> analyzeIssue(@PathVariable Long no) {
+        log.info("## AI - 요약 분석 요청 ##");
+        log.info("issueNo={}", no);
+
+        try {
+            Issue updated = issueService.analyzeIssue(no);
+            return ResponseEntity.ok(updated);   // 정상 응답
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid issueId: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            log.error("Error analyzing issue: ", e);
+            return ResponseEntity.status(500).body("AI 분석 중 오류 발생");
+        }
+    }
+
 }
