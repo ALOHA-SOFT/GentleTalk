@@ -95,6 +95,7 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
           String conflictSituation = '이런 갈등 상황이 있습니다.';
           String requirements = '이런 요구조건이 필요합니다.';
           String analysisResult = '';
+          String mediationProposal = '';
 
           String? errorMessage;
           final isLoading = snapshot.connectionState == ConnectionState.waiting;
@@ -116,6 +117,8 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
                 (data['requirements'] ?? requirements).toString();
             analysisResult =
                 (data['analysisResult'] ?? analysisResult).toString();
+            mediationProposal =
+                (data['mediationProposal'] ?? mediationProposal).toString();
           }
 
           final Color statusColor = _getStatusColor(status);
