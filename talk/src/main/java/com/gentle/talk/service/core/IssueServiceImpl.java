@@ -11,7 +11,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gentle.talk.domain.common.QueryParams;
 import com.gentle.talk.domain.core.Issue;
+import com.gentle.talk.domain.users.Users;
 import com.gentle.talk.mapper.core.IssueMapper;
+import com.gentle.talk.mapper.users.UserMapper;
 import com.gentle.talk.service.BaseServiceImpl;
 
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +37,9 @@ public class IssueServiceImpl extends BaseServiceImpl<Issue, IssueMapper> implem
 
     @Autowired
     IssueMapper mapper;
+
+    @Autowired
+    UserMapper userMapper;
 
     @Transactional
     @Override
@@ -418,6 +423,64 @@ public class IssueServiceImpl extends BaseServiceImpl<Issue, IssueMapper> implem
         String content = (String) message.get("content");
         log.info("### OpenAI content: {}", content);
         return content;
+    }
+
+    public boolean updateOpponent(Long issueNo, String name, String contact) {
+        Issue issue = mapper.selectByIssueNo(issueNo);
+        if (issue == null) return false;
+
+        issue.setNo(issueNo);
+        issue.setOpponentName(name);
+        issue.setOpponentContact(contact);
+
+        // 회원인지 확인
+        Users opponent = userMapper.findByPhone(contact);
+        if (opponent != null) {
+            issue.setOpponentUserNo(opponent.getNo());
+        }
+
+        return mapper.updateById(issue) > 0;
+    }
+
+    @Override
+    @Transactional
+    public void linkOpponentIssuesAfterSignup(Users user) {
+        String phone = user.getTel();
+        if (phone == null || phone.isBlank()) {
+            return;
+        }
+
+        // 1) opponent_contact = 이 전화번호
+        // 2) opponent_user_no IS NULL 인 이슈들만 조회
+        List<Issue> list = mapper.selectByOpponentContactWithoutUserNo(phone);
+
+        for (Issue issue : list) {
+            issue.setOpponentUserNo(user.getNo());
+            mapper.updateById(issue);
+        }
+
+        log.info("회원가입 후 opponent 매핑 완료 - userNo={}, affectedIssues={}",
+                user.getNo(), list.size());
+    }
+
+    @Override
+    public List<Issue> selectMyIssues(Long userNo) {
+        log.info("## 내가 참여한 이슈 목록 조회 ## userNo={}", userNo);
+
+        List<Issue> asSender = mapper.selectByUserNo(userNo);           // 내가 만든 이슈
+        List<Issue> asOpponent = mapper.selectByOpponentUserNo(userNo); // 내가 상대방인 이슈
+
+        // ⚠️ 같은 이슈가 두 번 들어오지 않도록 PK 기준으로 합치기 (no 기준 가정)
+        Map<Long, Issue> merged = new java.util.LinkedHashMap<>();
+
+        for (Issue i : asSender) {
+            merged.put(i.getNo(), i);
+        }
+        for (Issue i : asOpponent) {
+            merged.putIfAbsent(i.getNo(), i);
+        }
+
+        return new java.util.ArrayList<>(merged.values());
     }
     
 }

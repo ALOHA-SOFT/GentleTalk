@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -101,20 +102,20 @@ public class IssueController {
         }
     }
 
-    @GetMapping("/user/{userNo}")
-    @Operation(summary = "회원의 이슈 목록", description = "회원이 등록한 이슈 목록을 조회합니다")
-    public ResponseEntity<?> getIssuesByUser(@PathVariable Long userNo) {
-        log.info("## 회원의 이슈 목록 조회 ##");
-        log.info("userNo={}", userNo);
+    // @GetMapping("/user/{userNo}")
+    // @Operation(summary = "회원의 이슈 목록", description = "회원이 등록한 이슈 목록을 조회합니다")
+    // public ResponseEntity<?> getIssuesByUserNo(@PathVariable Long userNo) {
+    //     log.info("## 회원의 이슈 목록 조회 ##");
+    //     log.info("userNo={}", userNo);
 
-        try {
-            List<Issue> issues = issueService.selectByUserNo(userNo);
-            return ResponseEntity.ok(issues);
-        } catch (Exception e) {
-            log.error("회원 이슈 목록 조회 중 오류 발생", e);
-            return ResponseEntity.internalServerError().body("서버 오류: " + e.getMessage());
-        }
-    }
+    //     try {
+    //         List<Issue> issues = issueService.selectByUserNo(userNo);
+    //         return ResponseEntity.ok(issues);
+    //     } catch (Exception e) {
+    //         log.error("회원 이슈 목록 조회 중 오류 발생", e);
+    //         return ResponseEntity.internalServerError().body("서버 오류: " + e.getMessage());
+    //     }
+    // }
 
     @GetMapping
     @Operation(summary = "이슈 목록 조회", description = "페이징된 이슈 목록을 조회합니다")
@@ -276,6 +277,42 @@ public class IssueController {
         } catch (Exception e) {
             log.error("Error analyzing issue: ", e);
             return ResponseEntity.status(500).body("AI 분석 중 오류 발생");
+        }
+    }
+
+    @PutMapping("/{no}/opponent")
+    public ResponseEntity<?> updateOpponent(@PathVariable Long no, @RequestBody Map<String, String> body) {
+        log.info("## 상대방 정보 업데이트 ##");
+        log.info("issueNo={}", no);
+
+        String name = body.get("opponentName");
+        String contact = body.get("opponentContact");
+
+        log.info("## 상대방 정보 업데이트 ## no={}, name={}, contact={}", no, name, contact);
+
+        boolean result = issueService.updateOpponent(no, name, contact);
+
+        if (!result) {
+            return ResponseEntity.badRequest().body("업데이트 실패");
+        }
+
+        return ResponseEntity.ok("상대방 정보 업데이트 완료");
+    }
+
+    @GetMapping("/user/{userNo}")
+    @Operation(
+        summary = "회원의 이슈 목록",
+        description = "회원이 발신자 또는 상대방으로 참여한 이슈 목록을 조회합니다"
+    )
+    public ResponseEntity<?> getIssuesByUser(@PathVariable Long userNo) {
+        log.info("## 회원의 이슈 목록 조회 (발신 + 수신) ## userNo={}", userNo);
+
+        try {
+            List<Issue> issues = issueService.selectMyIssues(userNo);
+            return ResponseEntity.ok(issues);
+        } catch (Exception e) {
+            log.error("회원 이슈 목록 조회 중 오류 발생", e);
+            return ResponseEntity.internalServerError().body("서버 오류: " + e.getMessage());
         }
     }
 
