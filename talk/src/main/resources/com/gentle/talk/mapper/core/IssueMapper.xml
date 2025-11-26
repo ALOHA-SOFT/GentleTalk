@@ -118,6 +118,7 @@
     <update id="updateAnalysisResult">
         UPDATE issues
         SET 
+        negotiation_message = #{negotiationMessage},
         analysis_result = #{analysisResult},
         status = #{status}
         WHERE no = #{no}

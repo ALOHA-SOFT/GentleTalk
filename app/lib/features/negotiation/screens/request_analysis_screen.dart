@@ -132,7 +132,11 @@ class _RequestAnalysisScreenState extends State<RequestAnalysisScreen> {
               padding: const EdgeInsets.all(24.0),
               child: _buildPrimaryButton(
                 '협상 요청',
-                () => Navigator.pushNamed(context, '/send-request'),
+                () => Navigator.pushNamed(
+                        context,
+                        '/send-request',
+                        arguments: {'issueNo': _issueNo},
+                      ),
               ),
             ),
           ],
