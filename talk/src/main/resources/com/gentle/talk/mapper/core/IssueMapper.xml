@@ -124,4 +124,12 @@
         WHERE no = #{no}
     </update>
 
+    <!-- 이슈 테이블에 상대방 정보 매칭 -->
+    <select id="selectByOpponentContactWithoutUserNo" resultMap="IssueMap">
+        SELECT *
+        FROM issues
+        WHERE opponent_contact = #{phone}
+        AND (opponent_user_no IS NULL OR opponent_user_no = 0)
+    </select>
+
 </mapper>

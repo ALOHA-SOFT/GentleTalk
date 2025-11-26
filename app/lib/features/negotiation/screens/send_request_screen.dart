@@ -47,8 +47,7 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
 
   
   void _handleSend() async {
-    final receiverName =
-        _nameController.text.isEmpty ? "상대방" : _nameController.text;
+    final receiverName = _nameController.text.isEmpty ? "상대방" : _nameController.text;
     final phone = _phoneController.text.trim();
     final rawMessage = _negotiationMessage ?? "";
 
@@ -58,10 +57,19 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
       return;
     }
 
-    // 최종 메시지 생성
+    // ✔️ 1) 먼저 서버에 상대방 정보 저장 요청
+    final ok = await updateOpponentInfo(_issueNo!, receiverName, phone);
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("상대방 정보를 저장하지 못했습니다.")),
+      );
+      return;
+    }
+
+    // ✔️ 2) 메시지 렌더링
     final finalMessage = rawMessage.replaceAll("[상대방 이름]", receiverName);
 
-    // 🔥 문자 발송 API 요청
+    // ✔️ 3) 문자 발송
     final success = await sendSmsApi(phone, finalMessage);
 
     if (!success) {
@@ -71,7 +79,7 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
       return;
     }
 
-    // ⭕ 발송 성공 → 완료 페이지 이동
+    // ✔️ 4) 완료 페이지 이동
     Navigator.pushNamed(context, '/request-complete');
   }
 
@@ -106,8 +114,6 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
       return false;
     }
   }
-
-
 
   // ⭐ API 호출: negotiationMessage 가져오기
   Future<void> _fetchNegotiationMessage() async {
@@ -152,6 +158,27 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
         _negotiationMessage = "오류 발생: $e";
         _loadingMessage = false;
       });
+    }
+  }
+
+  Future<bool> updateOpponentInfo(String issueNo, String name, String phone) async {
+    final url = Uri.parse('${AppConfig.baseUrl}/api/v1/issues/$issueNo/opponent');
+
+    final body = {
+      "opponentName": name,
+      "opponentContact": phone,
+    };
+
+    try {
+      final response = await http.put(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
     }
   }
 

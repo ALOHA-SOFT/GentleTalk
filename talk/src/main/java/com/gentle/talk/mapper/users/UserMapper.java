@@ -22,5 +22,8 @@ public interface UserMapper extends BaseMapper<Users> {
   
   // 사용자명과 이메일로 사용자 찾기
   public Users findByUsernameAndEmail(String username, String email);
+
+  // 전화번호로 사용자 찾기 (상대방 찾기용)
+  public Users findByPhone(String tel);
   
 }

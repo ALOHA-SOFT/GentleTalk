@@ -2,6 +2,7 @@ package com.gentle.talk.controller.v1;
 
 import com.gentle.talk.domain.users.Users;
 import com.gentle.talk.security.jwt.JwtTokenProvider;
+import com.gentle.talk.service.core.IssueService;
 import com.gentle.talk.service.users.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,6 +32,7 @@ public class AuthController {
     private final UserDetailsService userDetailsService;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserService userService;
+    private final IssueService issueService;
 
     @PostMapping("/login")
     @Operation(summary = "로그인", description = "사용자명과 비밀번호로 로그인하여 JWT 토큰 발급")
@@ -316,6 +318,13 @@ public class AuthController {
             boolean result = userService.join(users);
 
             if (result) {
+                // 🔥 여기서 실제 저장된 회원 정보 다시 조회 (no 포함)
+                Users saved = userService.selectByUsername(users.getUsername());
+                if (saved != null && saved.getTel() != null && !saved.getTel().isBlank()) {
+                // 🔥 이 사람의 전화번호로 저장된 issues.opponent_contact 들을
+                //     opponent_user_no = saved.no 로 매핑
+                issueService.linkOpponentIssuesAfterSignup(saved);
+            }
                 return ResponseEntity.status(HttpStatus.CREATED).build();
             } else {
                 return ResponseEntity

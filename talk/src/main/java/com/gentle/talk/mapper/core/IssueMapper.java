@@ -35,5 +35,8 @@ public interface IssueMapper extends BaseMapper<Issue> {
 
   // 분석 결과 및 상태 업데이트
   public int updateAnalysisResult(Issue issue);
+
+  // 이슈 테이블에 상대방 정보 매칭
+  public List<Issue> selectByOpponentContactWithoutUserNo(@Param("phone") String phone);
   
 }
