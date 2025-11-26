@@ -5,7 +5,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
-import '../../../core/constants/config.dart'; // baseUrl 사용
+import '../../../core/constants/config.dart';
+
+import 'package:animated_text_kit/animated_text_kit.dart';
+
 
 class RequestAnalysisScreen extends StatefulWidget {
   const RequestAnalysisScreen({super.key});
@@ -28,7 +31,6 @@ class _RequestAnalysisScreenState extends State<RequestAnalysisScreen> {
     if (_initialized) return;
     _initialized = true;
 
-    // ✅ 이전 화면에서 넘겨준 arguments 받기 (예: {'issueNo': 'TEST001'})
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
 
@@ -65,7 +67,7 @@ class _RequestAnalysisScreenState extends State<RequestAnalysisScreen> {
         // ✅ 백엔드 Issue 엔티티 JSON 구조에 맞춰서 필드명 확인
         // 예: { "id": "...", "conflictSituation": "...", "requirements": "...", "analysisResult": "..." }
         final analysis =
-            data['analysisResult'] ?? data['analysis_result'] ?? '';
+            data['analysisResult'] ?? '';
 
         setState(() {
           _analysisResult =
@@ -199,44 +201,72 @@ class _RequestAnalysisScreenState extends State<RequestAnalysisScreen> {
     );
   }
 
-  // 🔥 분석 결과를 서버에서 받아온 텍스트로 표시
-  Widget _buildAnalysisResult(String resultText) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xCC46D2FD),
-            Color(0xCC5351F0),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(12),
-          topRight: Radius.circular(12),
-          bottomLeft: Radius.circular(0),
-          bottomRight: Radius.circular(12),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
+  // 🔥 분석 결과를 서버에서 받아온 텍스트로 표시 + 타이핑 애니메이션
+Widget _buildAnalysisResult(String resultText) {
+  final bool isLoading = resultText.isEmpty;
+
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        colors: [
+          Color(0xCC46D2FD),
+          Color(0xCC5351F0),
         ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
       ),
-      child: Text(
-        resultText,
-        style: AppTextStyles.body.copyWith(
-          fontSize: 14,
-          height: 1.5,
-          color: AppColors.textPrimary,
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(12),
+        topRight: Radius.circular(12),
+        bottomLeft: Radius.circular(0),
+        bottomRight: Radius.circular(12),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.05),
+          blurRadius: 10,
+          offset: const Offset(0, 5),
         ),
-      ),
-    );
-  }
+      ],
+    ),
+    child: isLoading
+        ? AnimatedTextKit(
+            animatedTexts: [
+              TypewriterAnimatedText(
+                'AI is generating a detailed explanation...',
+                textStyle: AppTextStyles.body.copyWith(
+                  fontSize: 14,
+                  height: 1.5,
+                  color: AppColors.textPrimary,
+                ),
+                speed: const Duration(milliseconds: 60),
+              ),
+            ],
+            repeatForever: true,
+            pause: const Duration(milliseconds: 1000),
+          )
+        : AnimatedTextKit(
+            animatedTexts: [
+              TypewriterAnimatedText(
+                resultText,
+                textStyle: AppTextStyles.body.copyWith(
+                  fontSize: 14,
+                  height: 1.5,
+                  color: AppColors.textPrimary,
+                ),
+                speed: const Duration(milliseconds: 20),
+              ),
+            ],
+            totalRepeatCount: 1,
+            isRepeatingAnimation: false,
+            displayFullTextOnTap: true,
+            stopPauseOnTap: true,
+          ),
+  );
+}
+
 
   Widget _buildPrimaryButton(String text, VoidCallback onPressed) {
     return SizedBox(
