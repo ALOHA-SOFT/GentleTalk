@@ -97,7 +97,8 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
           String requirements = '이런 요구조건이 필요합니다.';
           String analysisResult = '';
           String mediationProposal = '';
-          String opponentRequirements = ''; // ✅ 상대방 응답 메시지
+          String opponentRequirements = '';
+          String negotiationMessage = ''; 
 
           String? errorMessage;
           final isLoading = snapshot.connectionState == ConnectionState.waiting;
@@ -122,7 +123,10 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
                 (data['mediationProposal'] ?? mediationProposal).toString();
             opponentRequirements =
                 (data['opponentRequirements'] ?? opponentRequirements)
-                    .toString(); // ✅ 여기
+                    .toString();
+            negotiationMessage =
+                (data['negotiationMessage'] ?? negotiationMessage)
+                    .toString();
           }
 
           final Color statusColor = _getStatusColor(status);
@@ -143,7 +147,9 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
                   ? (status == '대기' ? '분석 요청 전입니다.' : '분석 중입니다.')
                   : status == '분석실패'
                       ? '분석에 실패했습니다.'
-                      : '분석내용에 맞춘 협상 메시지 입니다.';
+                      : (negotiationMessage.isNotEmpty
+                          ? negotiationMessage
+                          : '분석내용에 맞춘 협상 메시지 입니다.');
 
           // 상대방 응답/중재안제시에서 쓸 문구
           final String opponentMsgText =
@@ -420,8 +426,8 @@ class _InfoSection extends StatelessWidget {
   final String title;
   final String content;
   final Color textColor;
-  final Color? borderColor; // ✅ 추가
-  final Color? titleColor;  // ✅ 추가
+  final Color? borderColor;
+  final Color? titleColor; 
 
   const _InfoSection({
     required this.title,

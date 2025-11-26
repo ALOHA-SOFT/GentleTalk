@@ -7,6 +7,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gentle.talk.domain.common.QueryParams;
 import com.gentle.talk.domain.core.Issue;
 import com.gentle.talk.mapper.core.IssueMapper;
@@ -279,20 +281,24 @@ public class IssueServiceImpl extends BaseServiceImpl<Issue, IssueMapper> implem
             throw new IllegalStateException("conflict_situation 또는 requirements가 비어 있습니다. issueNo=" + issueNo);
         }
 
-        String analysisResult = "";   // ← 기본값 초기화
+        String analysisResult = "";
+        String negotiationMessage = "";
 
         try {
-            // ----- AI 프롬프트 구성 -----
-            String prompt = """
-                    아래 두 가지 정보를 바탕으로 갈등 상황을 명확하게 정리된 형태로 분석해 주세요.
+            // 1️⃣ 분석 결과 생성 프롬프트 (analysisResult 전용)
+            String promptAnalysis = """
+                    너는 공감형 협상 코치를 도와주는 AI야.
 
-                    1) 갈등 상황(conflict_situation):
+                    아래 사용자의 갈등 상황과 요구 조건을 바탕으로,
+                    상황을 객관적으로 정리한 분석 요약만 작성해줘.
+
+                    [갈등 상황]
                     %s
 
-                    2) 요구 조건(requirements):
+                    [나의 요구조건]
                     %s
 
-                    아래의 출력 형식을 반드시 그대로 유지해 주세요.
+                    반드시 아래 출력 형식을 그대로 따라야 한다.
 
                     출력 형식:
                     ⚖️ 주요 쟁점
@@ -309,59 +315,109 @@ public class IssueServiceImpl extends BaseServiceImpl<Issue, IssueMapper> implem
                     - 객관적 자료나 일반적인 기준을 예시로 포함
 
                     주의사항:
-                    - 절대로 다른 문구, 인삿말, 서론을 넣지 않는다.
+                    - 협상 메시지, 편지 형식, 상대방에게 직접 말 거는 문장은 작성하지 않는다.
+                    - 인사말, 결론 문구, "감사합니다" 같은 표현은 쓰지 않는다.
                     - 제목(⚖️ 💬 📚)은 그대로 출력한다.
                     - Markdown 불릿(-)만 사용한다.
                     - 불필요한 설명 없이 리스트만 출력한다.
                     """.formatted(conflict, requirements);
 
-            // ----- WebClient 호출 -----
-            WebClient webClient = WebClient.builder()
-                    .baseUrl("https://api.openai.com/v1/chat/completions")
-                    .defaultHeader("Authorization", "Bearer " + apiKey)
-                    .defaultHeader("Content-Type", "application/json")
-                    .build();
+            analysisResult = callOpenAi(promptAnalysis).trim();
+            issue.setAnalysisResult(analysisResult);
 
-            Map<String, Object> requestBody = Map.of(
-                    "model", model,
-                    "messages", List.of(
-                            Map.of("role", "system", "content", "You are a helpful Korean counselor."),
-                            Map.of("role", "user", "content", prompt)
-                    ),
-                    "temperature", 0.3
-            );
+            // 2️⃣ 협상 메시지 생성 프롬프트 (negotiationMessage 전용)
+            String promptNegotiation = """
+                    너는 공감형 협상 코치를 도와주는 AI야.
 
-            Map<String, Object> response = webClient.post()
-                    .bodyValue(requestBody)
-                    .retrieve()
-                    .bodyToMono(Map.class)
-                    .block();
+                    아래는 사용자의 갈등 상황을 정리한 분석 결과야.
+                    이 분석 결과를 바탕으로, 상대방에게 보낼 정중한 협상 메시지를 작성해줘.
 
-            List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
-            String content = (String) ((Map<String, Object>) choices.get(0).get("message")).get("content");
+                    [분석 결과(analysisResult)]
+                    %s
 
-            analysisResult = content.trim();
+                    협상 메시지 작성 규칙:
+                    - 한국어로 작성한다.
+                    - 5~8문장 정도의 하나의 메시지로 작성한다.
+                    - 상대방을 존중하는 톤으로, 감정적인 비난 없이 쓴다.
+                    - I-message(나 중심 표현)를 사용한다. (예: "저는 ~라고 느꼈습니다.")
+                    - 나의 요구 조건을 분명하지만 부드럽게 전달한다.
+                    - 상대방도 수용할 수 있는 대안이나 제안을 1~2개 포함한다.
 
-            // 정상 처리
+                    주의사항:
+                    - 불릿(-)이나 번호목록을 사용하지 않는다.
+                    - 제목, 섹션명(⚖️, 💬, 📚 등)을 쓰지 않는다.
+                    - 분석 내용을 다시 요약하지 말고, 실제로 상대방에게 보내는 편지 형태로만 쓴다.
+                    """.formatted(analysisResult);
+
+            negotiationMessage = callOpenAi(promptNegotiation).trim();
+            issue.setNegotiationMessage(negotiationMessage);
+
             issue.setStatus("분석완료");
+
+            // 🔥 분석결과 + 협상메시지 + 상태 한 번에 업데이트
+            int updatedRows = mapper.updateAnalysisResult(issue);
+            if (updatedRows == 0) {
+                throw new IllegalStateException("analysis_result 업데이트 실패. issueNo=" + issueNo);
+            }
+            return mapper.selectByIssueNo(issueNo);
 
         } catch (Exception e) {
             log.error("AI 분석 중 오류 발생 issueNo={}", issueNo, e);
 
             issue.setAnalysisResult("AI 분석 실패: " + e.getMessage());
             issue.setStatus("분석실패");
-        }
 
-        // 공통: DB 업데이트
-        issue.setAnalysisResult(analysisResult);
-        
-        int updatedRows = mapper.updateAnalysisResult(issue);
-        if (updatedRows == 0) {
-            throw new IllegalStateException("analysis_result 업데이트 실패. issueNo=" + issueNo);
+            mapper.updateAnalysisResult(issue);  // 실패 시 분석 결과/상태만 업데이트
+            return issue;
         }
-        return mapper.selectByIssueNo(issueNo);
     }
 
+    @SuppressWarnings("unchecked")
+    private String callOpenAi(String prompt) {
 
+        WebClient webClient = WebClient.builder()
+                .baseUrl("https://api.openai.com/v1/chat/completions")
+                .defaultHeader("Authorization", "Bearer " + apiKey)
+                .defaultHeader("Content-Type", "application/json")
+                .build();
+
+        // ✅ WebClient가 JSON으로 자동 직렬화 하도록 Map으로 요청 바디 생성
+        Map<String, Object> requestBody = Map.of(
+                "model", model,
+                "messages", List.of(
+                        Map.of("role", "system", "content", "You are a helpful Korean counselor."),
+                        Map.of("role", "user", "content", prompt)
+                ),
+                "temperature", 0.3
+        );
+
+        log.info("### OpenAI 요청 바디: {}", requestBody);
+
+        Map<String, Object> response = webClient.post()
+                .bodyValue(requestBody)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block();
+
+        log.info("### OpenAI 응답: {}", response);
+
+        if (response == null || !response.containsKey("choices")) {
+            throw new IllegalStateException("OpenAI 응답이 비어있거나 choices가 없습니다.");
+        }
+
+        List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
+        if (choices == null || choices.isEmpty()) {
+            throw new IllegalStateException("OpenAI 응답 choices가 비어 있습니다.");
+        }
+
+        Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
+        if (message == null || message.get("content") == null) {
+            throw new IllegalStateException("OpenAI 응답에 message.content가 없습니다.");
+        }
+
+        String content = (String) message.get("content");
+        log.info("### OpenAI content: {}", content);
+        return content;
+    }
     
 }

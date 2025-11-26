@@ -52,5 +52,7 @@ public class Issue extends Base {
   
   @TableField(exist = false)
   private Users opponentUser;               // 상대방 회원 정보
+
+  private String negotiationMessage;        // 협상 메시지
   
 }

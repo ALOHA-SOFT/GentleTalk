@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
+import '../../../core/constants/config.dart';
 
 class SendRequestScreen extends StatefulWidget {
   const SendRequestScreen({super.key});
@@ -13,6 +18,26 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
 
+  // ⭐ negotiationMessage 상태 변수
+  String? _negotiationMessage;
+  bool _loadingMessage = true;
+  String? _issueNo;
+  bool _initialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+    _issueNo = args?['issueNo']?.toString();
+
+    _fetchNegotiationMessage();
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -21,7 +46,64 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
   }
 
   void _handleSend() {
+    final receiverName =
+        _nameController.text.isEmpty ? "상대방" : _nameController.text;
+    final phone = _phoneController.text;
+    final rawMessage = _negotiationMessage ?? "";
+
+    final finalMessage =
+        rawMessage.replaceAll("[상대방 이름]", receiverName);
+
+    // TODO: finalMessage + phone으로 문자 발송 API 호출
+    // await sendSmsApi(phone, finalMessage);
+
     Navigator.pushNamed(context, '/request-complete');
+  }
+
+  // ⭐ API 호출: negotiationMessage 가져오기
+  Future<void> _fetchNegotiationMessage() async {
+    if (_issueNo == null) {
+      setState(() {
+        _negotiationMessage = "이슈 번호가 없습니다.";
+        _loadingMessage = false;
+      });
+      return;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('accessToken');
+
+      final uri = Uri.parse('${AppConfig.baseUrl}/api/v1/issues/$_issueNo');
+
+      final headers = {
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+
+      final response = await http.get(uri, headers: headers);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        setState(() {
+          _negotiationMessage =
+              data['negotiationMessage'] ?? '협상 메시지가 존재하지 않습니다.';
+          _loadingMessage = false;
+        });
+      } else {
+        setState(() {
+          _negotiationMessage =
+              "서버 오류(${response.statusCode}). 메시지를 가져올 수 없습니다.";
+          _loadingMessage = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _negotiationMessage = "오류 발생: $e";
+        _loadingMessage = false;
+      });
+    }
   }
 
   @override
@@ -52,21 +134,23 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: 20),
-                    // Name input
+
                     _buildInputField(
                       controller: _nameController,
                       icon: Icons.person_outline,
                       hint: '상대방 이름',
                     ),
+
                     const SizedBox(height: 20),
-                    // Phone input
+
                     _buildInputField(
                       controller: _phoneController,
                       icon: Icons.phone_outlined,
                       hint: '전화번호',
                     ),
+
                     const SizedBox(height: 20),
-                    // Info text
+
                     Text(
                       '아래와 같이 메세지가 발송됩니다.',
                       style: AppTextStyles.body.copyWith(
@@ -75,12 +159,16 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
                         color: AppColors.textSecondary,
                       ),
                     ),
+
                     const SizedBox(height: 20),
-                    // Message preview
+
+                    // ⭐ 협상 메시지 프리뷰
                     _buildMessagePreview(),
+
                     const SizedBox(height: 30),
-                    // Send button
+
                     _buildPrimaryButton('발송 하기', _handleSend),
+
                     const SizedBox(height: 30),
                   ],
                 ),
@@ -110,6 +198,12 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
           Expanded(
             child: TextField(
               controller: controller,
+              onChanged: (_) {
+                // 상대방 이름 바뀔 때 프리뷰 다시 그리기
+                if (controller == _nameController) {
+                  setState(() {});
+                }
+              },
               decoration: InputDecoration(
                 hintText: hint,
                 hintStyle: AppTextStyles.body.copyWith(
@@ -128,7 +222,23 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
     );
   }
 
+  // ⭐ negotiationMessage 표시
   Widget _buildMessagePreview() {
+    if (_loadingMessage) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        alignment: Alignment.center,
+        child: const CircularProgressIndicator(),
+      );
+    }
+
+    String previewText = _negotiationMessage ?? "";
+    previewText = previewText.replaceAll(
+      "[상대방 이름]",
+      _nameController.text.isEmpty ? "상대방" : _nameController.text,
+    );
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -153,25 +263,7 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
         ],
       ),
       child: Text(
-        '''수신인: [임대인 이름] 
-발신인: [임차인 이름] 
-제목: [임차인 이름] 임대차 계약 건에 대한 협의 요청
-
-안녕하세요,
-[임차인 이름]입니다.
-저희의 임대차 계약과 관련하여 원활한 협의를 진행하고자,
-갈등조정 플랫폼 '젠틀톡'을 통해 연락드립니다.
-
-저의 현재 상황은 다음과 같습니다.
-계약서: [계약서 내용 중 관련 조항]
-이사 예정일: [이사 희망 날짜]
-감정 소모 없이 합리적인 해결책을 찾고 싶습니다.
-
-본 메시지에 대한 답변을 젠틀톡 플랫폼에 남겨주시면, 
-양측의 입장을 정리하여 보다 효율적인 대화를 진행할 수 
-있도록 돕겠습니다.
-
-감사합니다.''',
+        previewText,
         style: AppTextStyles.body.copyWith(
           fontSize: 14,
           height: 1.5,
@@ -201,7 +293,7 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
               BoxShadow(
                 color: Colors.black.withOpacity(0.25),
                 blurRadius: 4,
-                offset: const Offset(0, 4),
+                offset: Offset(0, 4),
               ),
             ],
           ),
