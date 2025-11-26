@@ -45,20 +45,69 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
     super.dispose();
   }
 
-  void _handleSend() {
+  
+  void _handleSend() async {
     final receiverName =
         _nameController.text.isEmpty ? "상대방" : _nameController.text;
-    final phone = _phoneController.text;
+    final phone = _phoneController.text.trim();
     final rawMessage = _negotiationMessage ?? "";
 
-    final finalMessage =
-        rawMessage.replaceAll("[상대방 이름]", receiverName);
+    if (phone.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("전화번호를 입력해주세요")));
+      return;
+    }
 
-    // TODO: finalMessage + phone으로 문자 발송 API 호출
-    // await sendSmsApi(phone, finalMessage);
+    // 최종 메시지 생성
+    final finalMessage = rawMessage.replaceAll("[상대방 이름]", receiverName);
 
+    // 🔥 문자 발송 API 요청
+    final success = await sendSmsApi(phone, finalMessage);
+
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("문자 발송에 실패했습니다. 다시 시도해주세요.")),
+      );
+      return;
+    }
+
+    // ⭕ 발송 성공 → 완료 페이지 이동
     Navigator.pushNamed(context, '/request-complete');
   }
+
+  Future<bool> sendSmsApi(String phone, String message) async {
+    final url = Uri.parse('${AppConfig.baseUrl}/api/v1/sms/send');
+
+    final body = {
+      "phone": phone,
+      "message": message,
+    };
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        return data["success"] == true ||
+              data["result_code"] == "1" ||
+              data["result_code"] == 1; 
+      }
+
+      return false;
+    } catch (e) {
+      print("문자 API 예외 발생: $e");
+      return false;
+    }
+  }
+
+
 
   // ⭐ API 호출: negotiationMessage 가져오기
   Future<void> _fetchNegotiationMessage() async {
