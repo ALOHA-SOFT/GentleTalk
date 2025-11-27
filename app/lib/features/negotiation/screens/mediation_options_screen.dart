@@ -302,7 +302,7 @@ class _MediationOptionsScreenState extends State<MediationOptionsScreen> {
           borderRadius: BorderRadius.circular(8),
           child: Center(
             child: Text(
-              '중재안 선택',
+              '최종협상 진행',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,

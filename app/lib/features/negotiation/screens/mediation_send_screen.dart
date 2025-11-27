@@ -367,7 +367,7 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
                     borderRadius: BorderRadius.circular(8),
                     child: const Center(
                       child: Text(
-                        '발송하기',
+                        '최종협상 진행',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
