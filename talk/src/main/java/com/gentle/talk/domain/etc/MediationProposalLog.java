@@ -57,17 +57,6 @@ public class MediationProposalLog extends Base {
   
   @TableField(exist = false)
   private Long issueNo;
-  
-  // @TableField(exist = false)
-  // private List<ProposalItem> proposals;
-
-  // @Data
-  // @AllArgsConstructor
-  // @NoArgsConstructor
-  // public static class ProposalItem {
-  //     private int index;
-  //     private String content;
-  // }
 
   @TableField(exist = false)
   private Integer sequence;

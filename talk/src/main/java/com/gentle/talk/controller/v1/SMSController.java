@@ -3,15 +3,19 @@ package com.gentle.talk.controller.v1;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.gentle.talk.domain.core.Issue;
 import com.gentle.talk.service.common.SMSService;
+import com.gentle.talk.service.core.IssueService;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +29,9 @@ public class SMSController {
 
     @Autowired
     private SMSService smsService;
+
+    @Autowired
+    private IssueService issueService;
 
     /**
      * 문자 보내기 화면
@@ -65,6 +72,47 @@ public class SMSController {
             return message;
         }
         // ⭕ 전송 성공
+        return resultMap.toString();
+    }
+
+    @PostMapping("/send/{issueNo}")
+    @ResponseBody
+    public String sendSMSByIssue(@PathVariable Long issueNo) {
+        log.info("## SMS 발송 요청 (issueNo) ## issueNo={}", issueNo);
+
+        Issue issue = issueService.selectByIssueNo(issueNo);
+        if (issue == null) {
+            return "존재하지 않는 이슈입니다.";
+        }
+
+        String msg = issue.getNegotiationMessage();
+        String receiver = issue.getOpponentContact();
+
+        if (msg == null || msg.isBlank()) {
+            return "협상 메시지가 없습니다.";
+        }
+        if (receiver == null || receiver.isBlank()) {
+            return "상대방 연락처가 없습니다.";
+        }
+
+        MultiValueMap<String, String> param = new LinkedMultiValueMap<>();
+        param.add("msg", msg);
+        param.add("receiver", receiver);
+        param.add("rdate", "");        // 필요 없으면 빈 값
+        param.add("rtime", "");
+        param.add("testmode_yn", "Y"); // 발송 모드 설정
+
+        Map<String, Object> resultMap = smsService.send(param);
+
+        Object resultCode = resultMap.get("result_code");
+        Integer result_code = Integer.valueOf(resultCode != null ? resultCode.toString() : "-1");
+        String message = (String) resultMap.get("message");
+
+        if (result_code == -101) {
+            log.info("(전송 실패) : " + message);
+            return message;
+        }
+
         return resultMap.toString();
     }
 }
