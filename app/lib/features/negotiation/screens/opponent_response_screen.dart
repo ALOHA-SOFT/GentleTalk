@@ -6,6 +6,13 @@ class OpponentResponseScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 🔥 arguments에서 데이터 받기
+    final args =
+        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+
+    final opponentAnalysis = args['opponentAnalysis'] ?? "데이터 없음";
+    final processDays = args['processDays'] ?? "3일";
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -24,6 +31,7 @@ class OpponentResponseScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 25),
+
               // 안내 박스
               Container(
                 width: double.infinity,
@@ -45,31 +53,44 @@ class OpponentResponseScreen extends StatelessWidget {
                   ),
                 ),
               ),
+
               const SizedBox(height: 25),
-              // 분석 결과 박스
+
+              // 🔥 상대방 분석 결과 박스
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(16),
+                constraints: const BoxConstraints(
+                  minHeight: 180,
+                ),
                 decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFFF1F1F2)),
+                  border: Border.all(color: Color(0xFFF1F1F2)),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      '주요 쟁점: 계약 기간 만료 전 이사에 따른 위약금 발생 여부.\n\n주장하는 조건: 계약서에 명시된 내용을 근거로 위약금 지급을 요구.\n\n제시하는 근거: 계약서 조항 및 개인적인 경험에 비추어 정당한 요구라고 판단함.',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF282B35),
-                        height: 1.5,
+                    // 🔥 상대방 분석 데이터
+                    Container(
+                      constraints: const BoxConstraints(
+                        minHeight: 380,
+                      ),
+                      alignment: Alignment.topLeft,
+                      child: Text(
+                        opponentAnalysis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF282B35),
+                          height: 1.5,
+                        ),
                       ),
                     ),
+
                     const SizedBox(height: 10),
-                    const Text(
-                      '처리기간 : 3일',
-                      style: TextStyle(
+                    Text(
+                      '처리기간 : $processDays',
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: Color(0xFF282B35),
@@ -79,7 +100,10 @@ class OpponentResponseScreen extends StatelessWidget {
                   ],
                 ),
               ),
+
+
               const SizedBox(height: 25),
+
               // 확인 버튼
               Container(
                 width: double.infinity,
@@ -91,7 +115,7 @@ class OpponentResponseScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.25),
+                      color: Colors.black26,
                       blurRadius: 4,
                       offset: const Offset(0, 4),
                     ),
@@ -117,6 +141,7 @@ class OpponentResponseScreen extends StatelessWidget {
                   ),
                 ),
               ),
+
               const SizedBox(height: 20),
             ],
           ),

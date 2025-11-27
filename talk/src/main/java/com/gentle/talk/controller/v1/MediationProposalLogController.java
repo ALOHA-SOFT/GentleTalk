@@ -227,4 +227,35 @@ public class MediationProposalLogController {
             this.requirements = requirements;
         }
     }
+
+    @PostMapping("/generate/{no}")
+    public ResponseEntity<?> generateMediationProposals(@PathVariable Long no, @RequestParam(required = false) Long categoryNo) {
+        log.info("## AI - 중재안 생성 요청 ##");
+        log.info("no={}, categoryNo={}", no, categoryNo);
+
+    try {
+        // 🟩 categoryNo가 없으면 issueNo로 동일하게 설정
+        if (categoryNo == null) {
+            categoryNo = no;
+            log.info("categoryNo가 없어 issueNo로 자동 설정됨 → categoryNo={}", categoryNo);
+        }
+            // // 서비스는 MediationProposalLog 한 건을 반환
+            MediationProposalLog logEntity =
+                    mediationProposalLogService.generateProposalsFromIssue(no, categoryNo);
+            return ResponseEntity.ok(logEntity);
+
+        } catch (IllegalArgumentException e) {
+            log.error("잘못된 요청: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+
+        } catch (RuntimeException e) {
+            log.error("AI 중재안 생성 중 오류 발생: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body("중재안 생성 실패: " + e.getMessage());
+
+        } catch (Exception e) {
+            log.error("서버 오류: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body("서버 오류가 발생했습니다.");
+        }
+    }
+
 }

@@ -3,7 +3,6 @@ package com.gentle.talk.controller.v1;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,7 +35,6 @@ public class SMSController {
         return "index";
     }
     
-
     /**
      * param
      *  - msg       : 문자메시지

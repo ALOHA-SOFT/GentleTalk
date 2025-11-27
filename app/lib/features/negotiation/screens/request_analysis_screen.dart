@@ -18,12 +18,26 @@ class RequestAnalysisScreen extends StatefulWidget {
 }
 
 class _RequestAnalysisScreenState extends State<RequestAnalysisScreen> {
+  String _userUsername = '';
   bool _initialized = false;
 
   bool _isLoading = true;
   String? _errorMessage;
   String? _analysisResult;
   String? _issueNo; // arguments에서 받아올 값
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _userUsername = prefs.getString('userUsername') ?? ''; // 로그인 시 저장한 키
+    });
+  }
 
   @override
   void didChangeDependencies() {
@@ -118,9 +132,9 @@ class _RequestAnalysisScreenState extends State<RequestAnalysisScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 20),
-                        _buildBotBubble('안젠틀님의,\n요구조건을 고려하여 분석한 결과입니다.'),
+                        _buildBotBubble('${_userUsername.isNotEmpty ? _userUsername : "안젠틀"}님의,\n요구조건을 고려하여 분석한 결과입니다.'),
                         const SizedBox(height: 12),
-                        _buildBody(), // ✅ 로딩/에러/결과 처리
+                        _buildBody(),
                         const SizedBox(height: 30),
                       ],
                     ),

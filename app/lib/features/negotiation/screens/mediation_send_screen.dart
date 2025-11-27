@@ -1,4 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../core/constants/config.dart';
 import '../../user/widgets/bottom_nav_bar.dart';
 
 class MediationSendScreen extends StatefulWidget {
@@ -12,34 +17,146 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
   final TextEditingController _additionalConditionsController =
       TextEditingController();
 
+  String? _issueNo;
+  bool _hasAdditionalConditions = false;
+
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  /// issues.selectedMediationProposal 값 (최종 협상안)
+  String _selectedProposalText = '';
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+    if (args != null && _issueNo == null) {
+      _issueNo = args['issueNo']?.toString();
+      _hasAdditionalConditions =
+          (args['hasAdditionalConditions'] as bool?) ?? false;
+
+      // optionNumber / selectedProposalText 를 넘겼어도
+      // 최종적으로는 DB 기준(selectedMediationProposal)을 신뢰
+      _loadIssueDetail();
+    }
+  }
+
   @override
   void dispose() {
     _additionalConditionsController.dispose();
     super.dispose();
   }
 
-  String _getOptionText(int optionNumber) {
-    switch (optionNumber) {
-      case 1:
-        return '임차인은 위약금의 50%를 지불하고, 임대인은 나머지 50%를 감면한다. ...';
-      case 2:
-        return '임차인은 현재 계약이 종료되기 전까지 직접 새로운 임차인을 찾아 계약을 체결해야 합니다. 새로운 임차인과의 계약이 ....';
-      case 3:
-        return '임차인이 계약서에 명시된 대로 위약금을 전액 지급하고, ...';
-      case 4:
-        return '임차인이 위약금을 내는 대신, 임대인이 새로운 세입자를 구할 때 발생하는 ...';
-      default:
-        return '';
+  /// issues/{issueNo} 조회해서 selectedMediationProposal 가져오기
+  Future<void> _loadIssueDetail() async {
+    if (_issueNo == null) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = '이슈 번호가 없습니다.';
+      });
+      return;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      final uri =
+          Uri.parse('${AppConfig.baseUrl}/api/v1/issues/$_issueNo');
+      debugPrint('📡 GET $uri (mediation-send)');
+
+      final res = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (res.statusCode != 200) {
+        throw Exception('이슈 정보를 불러오지 못했습니다. (${res.statusCode})');
+      }
+
+      final data =
+          json.decode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+
+      // 🔥 issues 테이블의 selectedMediationProposal 사용
+      final raw = data['selectedMediationProposal'];
+
+      String text;
+      if (raw == null) {
+        text = '선택된 중재안이 없습니다.';
+      } else if (raw is String) {
+        // String 이면 그대로 사용 (JSON 문자열이든, plain 텍스트든)
+        text = raw;
+      } else {
+        // 혹시 Map / List 로 내려오면 보기 좋게 JSON 문자열로 변환
+        text = const JsonEncoder.withIndent('  ').convert(raw);
+      }
+
+      setState(() {
+        _selectedProposalText = text;
+        _isLoading = false;
+        _errorMessage = null;
+      });
+    } catch (e) {
+      debugPrint('❌ 이슈 조회 오류(mediation-send): $e');
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString();
+      });
+    }
+  }
+
+  /// 중재안 발송 API (예시) – 실제 엔드포인트에 맞게 수정해서 사용
+  Future<bool> _sendMediation() async {
+    if (_issueNo == null) return false;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      final uri = Uri.parse(
+          '${AppConfig.baseUrl}/api/v1/issues/$_issueNo/send-mediation');
+      debugPrint('📡 POST $uri (send mediation)');
+
+      final body = {
+        'additionalConditions': _hasAdditionalConditions
+            ? _additionalConditionsController.text.trim()
+            : null,
+      };
+
+      final res = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      );
+
+      if (res.statusCode == 200) {
+        debugPrint('✅ 중재안 발송 성공');
+        return true;
+      } else {
+        debugPrint('❌ 중재안 발송 실패: ${res.statusCode} ${res.body}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ 중재안 발송 예외: $e');
+      return false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final args =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    final optionNumber = args?['optionNumber'] as int? ?? 1;
-    final hasAdditionalConditions =
-        args?['hasAdditionalConditions'] as bool? ?? false;
+      ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+    final issueNo = args?['issueNo'];
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -51,7 +168,7 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
               const SizedBox(height: 20),
               // 타이틀
               Text(
-                hasAdditionalConditions ? '추가 조건 입력' : '중재안 발송',
+                _hasAdditionalConditions ? '추가 조건 입력' : '중재안 발송',
                 style: const TextStyle(
                   fontSize: 21,
                   fontWeight: FontWeight.w700,
@@ -59,6 +176,25 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
                 ),
               ),
               const SizedBox(height: 25),
+
+              if (_isLoading) ...[
+                const LinearProgressIndicator(),
+                const SizedBox(height: 16),
+              ],
+
+              if (_errorMessage != null) ...[
+                Text(
+                  _errorMessage!,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.red,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+              ],
+
               // 안내 박스
               Container(
                 width: double.infinity,
@@ -81,6 +217,7 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
                 ),
               ),
               const SizedBox(height: 25),
+
               // 선택된 중재안 박스
               Container(
                 width: double.infinity,
@@ -114,17 +251,25 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    // 중재안 내용
-                    Text(
-                      _getOptionText(optionNumber),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF282B35),
-                        height: 1.5,
+                    // 선택된 중재안 내용
+                    Container(
+                      constraints: const BoxConstraints(
+                        minHeight: 200, // 최솟높이
+                      ),
+                      alignment: Alignment.topLeft, // 🔥 텍스트를 위+왼쪽 정렬
+                      child: Text(
+                        _selectedProposalText.isNotEmpty
+                            ? _selectedProposalText
+                            : '선택된 중재안이 없습니다.',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF282B35),
+                          height: 1.5,
+                        ),
                       ),
                     ),
-                    if (hasAdditionalConditions) ...[
+                    if (_hasAdditionalConditions) ...[
                       const SizedBox(height: 10),
                       // 추가 조건 헤더
                       Container(
@@ -164,7 +309,7 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
                           controller: _additionalConditionsController,
                           maxLines: null,
                           decoration: const InputDecoration(
-                            hintText: '추가적으로... 이런 내용을 요청드립니다..',
+                            hintText: '추가 조건이 있다면 입력해주세요.',
                             hintStyle: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
@@ -186,7 +331,7 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
                 ),
               ),
               const SizedBox(height: 25),
-              // 버튼들
+
               // 발송하기 버튼
               Container(
                 width: double.infinity,
@@ -207,8 +352,17 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: () {
-                      Navigator.pushNamed(context, '/mediation-sent');
+                    onTap: () async {
+                      final ok = await _sendMediation();
+                      if (ok) {
+                        Navigator.pushNamed(context, '/mediation-sent');
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('중재안 발송에 실패했습니다. 다시 시도해주세요.'),
+                          ),
+                        );
+                      }
                     },
                     borderRadius: BorderRadius.circular(8),
                     child: const Center(
@@ -225,6 +379,7 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
                 ),
               ),
               const SizedBox(height: 10),
+
               // 다시 선택 버튼
               Container(
                 width: double.infinity,
@@ -245,7 +400,13 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: () {
-                      Navigator.pop(context);
+                      Navigator.pushNamed(
+                        context,
+                        '/mediation-options',
+                        arguments: {
+                          'issueNo': args?['issueNo'],
+                        },
+                      );
                     },
                     borderRadius: BorderRadius.circular(8),
                     child: const Center(

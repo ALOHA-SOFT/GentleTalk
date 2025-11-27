@@ -7,12 +7,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gentle.talk.domain.common.QueryParams;
 import com.gentle.talk.domain.core.Issue;
 import com.gentle.talk.domain.users.Users;
 import com.gentle.talk.mapper.core.IssueMapper;
+import com.gentle.talk.mapper.etc.MediationProposalLogMapper;
 import com.gentle.talk.mapper.users.UserMapper;
 import com.gentle.talk.service.BaseServiceImpl;
 
@@ -40,6 +39,9 @@ public class IssueServiceImpl extends BaseServiceImpl<Issue, IssueMapper> implem
 
     @Autowired
     UserMapper userMapper;
+
+    @Autowired
+    MediationProposalLogMapper mediationProposalLogMapper;
 
     @Transactional
     @Override
@@ -211,7 +213,7 @@ public class IssueServiceImpl extends BaseServiceImpl<Issue, IssueMapper> implem
     @Transactional
     @Override
     public boolean selectMediationProposal(Long issueNo, String selectedProposal) {
-        log.info("## 중재안 선택 ##");
+        log.info("## 중재안 선택 (최초/재선택 모두 허용) ##");
         log.info("issueNo={}, selectedProposal={}", issueNo, selectedProposal);
         
         try {
@@ -220,12 +222,18 @@ public class IssueServiceImpl extends BaseServiceImpl<Issue, IssueMapper> implem
                 log.error("이슈를 찾을 수 없습니다. issueNo={}", issueNo);
                 return false;
             }
+
+            String prev = issue.getSelectedMediationProposal();
+            log.info("기존 선택 중재안: {}", prev);
             
             issue.setSelectedMediationProposal(selectedProposal);
-            issue.setStatus("협상완료");
-            
+
+            if (!"중재안제시".equals(issue.getStatus())) {
+                issue.setStatus("중재안제시");
+            }
+
             int result = mapper.updateById(issue);
-            log.info("중재안 선택 결과 - result: {}", result);
+            log.info("중재안 선택/갱신 결과 - result: {}, newSelected={}", result, selectedProposal);
             
             return result > 0;
         } catch (Exception e) {
@@ -342,6 +350,7 @@ public class IssueServiceImpl extends BaseServiceImpl<Issue, IssueMapper> implem
 
                     협상 메시지 작성 규칙:
                     - 한국어로 작성한다.
+                    - 첫 문장은 안녕하세요. [상대방 이름]님, 으로 시작한다.
                     - 5~8문장 정도의 하나의 메시지로 작성한다.
                     - 상대방을 존중하는 톤으로, 감정적인 비난 없이 쓴다.
                     - I-message(나 중심 표현)를 사용한다. (예: "저는 ~라고 느꼈습니다.")
@@ -439,6 +448,18 @@ public class IssueServiceImpl extends BaseServiceImpl<Issue, IssueMapper> implem
             issue.setOpponentUserNo(opponent.getNo());
         }
 
+        // negotiation_message 안의 [상대방 이름] 치환
+        String msg = issue.getNegotiationMessage();
+        if (msg != null 
+            && !msg.isBlank() 
+            && msg.contains("[상대방 이름]")
+            && name != null 
+            && !name.isBlank()) {
+            
+            String replaced = msg.replace("[상대방 이름]", name);
+            issue.setNegotiationMessage(replaced);
+        }
+
         return mapper.updateById(issue) > 0;
     }
 
@@ -482,5 +503,5 @@ public class IssueServiceImpl extends BaseServiceImpl<Issue, IssueMapper> implem
 
         return new java.util.ArrayList<>(merged.values());
     }
-    
+
 }
