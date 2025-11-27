@@ -24,13 +24,13 @@ public class SwaggerConfig {
     }
 
     // group2 : /api/admin/v1/**
-    @Bean
-    public GroupedOpenApi adminApi() {
-        return GroupedOpenApi.builder()
-            .group("admin")
-            .pathsToMatch("/api/admin/v1/**")
-            .build();
-    }
+//     @Bean
+//     public GroupedOpenApi adminApi() {
+//         return GroupedOpenApi.builder()
+//             .group("admin")
+//             .pathsToMatch("/api/admin/v1/**")
+//             .build();
+//     }
 
     @Bean
     public OpenAPI springShopOpenAPI() {
