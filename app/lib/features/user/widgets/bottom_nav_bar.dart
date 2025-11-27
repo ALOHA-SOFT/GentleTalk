@@ -45,7 +45,7 @@ class BottomNavBar extends StatelessWidget {
             Positioned(
               left: 0,
               right: 0,
-              top: -30,
+              top: 0,
               child: Center(
                 child: GestureDetector(
                   onTap: () => onTap(4),
