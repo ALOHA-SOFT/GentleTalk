@@ -1,4 +1,7 @@
--- Active: 1763786089463@@127.0.0.1@3306@gentletalk
+-- Active: 1758440462829@@127.0.0.1@3306@gentletalk
+
+USE `gentletalk`;
+
 SET FOREIGN_KEY_CHECKS = 0;
 
 
@@ -77,6 +80,7 @@ CREATE TABLE `issues` (
 	`opponent_analysis_result` TEXT COMMENT '상대방 요구사항 분석결과',
 	`mediation_proposals` JSON COMMENT '중재안',
 	`selected_mediation_proposal` JSON COMMENT '선택된 중재안',
+	`negotiation_message` TEXT COMMENT '협상메시지',
 	`status` VARCHAR(20) NOT NULL DEFAULT '대기' COMMENT '상태 (대기, 분석중, 분석완료, 분석실패, 상대방대기, 상대방응답, 중재안제시, 협상완료, 협상결렬)',
 	`created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
 	`updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일자',
@@ -224,7 +228,7 @@ CREATE TABLE `mediation_proposal_logs` (
 	`created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
 	`updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일자',
 	PRIMARY KEY (`no`),
-	FOREIGN KEY (`category_no`) REFERENCES `issue_categories` (`no`) ON DELETE CASCADE ON UPDATE CASCADE,
+	-- FOREIGN KEY (`category_no`) REFERENCES `issue_categories` (`no`) ON DELETE CASCADE ON UPDATE CASCADE,
 	FOREIGN KEY (`source_log_no`) REFERENCES `mediation_proposal_logs` (`no`) ON DELETE SET NULL ON UPDATE CASCADE,
 	INDEX `idx_category_hash` (`category_no`, `conflict_situation_hash`),
 	INDEX `idx_reuse_count` (`reuse_count` DESC),
