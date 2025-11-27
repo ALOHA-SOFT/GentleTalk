@@ -83,34 +83,50 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
     Navigator.pushNamed(context, '/request-complete');
   }
 
-  Future<bool> sendSmsApi(String phone, String message) async {
+    Future<bool> sendSmsApi(String phone, String message) async {
     final url = Uri.parse('${AppConfig.baseUrl}/api/v1/sms/send');
 
     final body = {
-      "phone": phone,
-      "message": message,
+      "msg": message,
+      "receiver": phone,
+      "rdate": "",
+      "rtime": "",
+      "testmode_yn": "Y", // 필요에 따라 N으로
     };
 
     try {
       final response = await http.post(
         url,
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: jsonEncode(body),
+        body: body,
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      if (response.statusCode != 200) {
+        return false;
+      }
 
-        return data["success"] == true ||
-              data["result_code"] == "1" ||
-              data["result_code"] == 1; 
+      final respText = response.body;
+      // 디버깅용
+      debugPrint('📨 SMS 응답: $respText');
+
+      // 🔹 실패 패턴: 인증오류, 전송 실패, -101 등 포함 시 실패로 간주
+      if (respText.contains('인증오류') ||
+          respText.contains('전송 실패') ||
+          respText.contains('-101')) {
+        return false;
+      }
+
+      // 🔹 성공 패턴: result_code=1 이라는 문자열 포함되면 성공으로 간주
+      if (respText.contains('result_code=1') ||
+          respText.contains('result_code=01')) {
+        return true;
       }
 
       return false;
     } catch (e) {
-      print("문자 API 예외 발생: $e");
+      debugPrint("문자 API 예외 발생: $e");
       return false;
     }
   }

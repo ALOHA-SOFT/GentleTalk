@@ -22,11 +22,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 @Service
 public class SMSServiceImple implements SMSService {
-    // @Value("${aligo.user_id}") String userId;
-    // @Value("${aligo.api-key}") String apiKey;
-    // @Value("${aligo.sender}") String sender;
+    @Value("${aligo.user_id}") String userId;
+    @Value("${aligo.api-key}") String apiKey;
+    @Value("${aligo.sender}") String sender;
 
     @Override
     public Map<String, Object> send(MultiValueMap<String, String> param) {
@@ -41,19 +42,19 @@ public class SMSServiceImple implements SMSService {
             String rtime = param.getFirst("rtime") == null ? "" : param.getFirst("rtime");
             String testmodeYn = param.getFirst("testmode_yn") == null ? "N" : param.getFirst("testmode_yn");
 
-            // sms.put("user_id", userId);                                       // ✅(필수) SMS 아이디
-            // sms.put("key", apiKey);                                           // ✅(필수) 인증키
-            // sms.put("msg", "테스트 메시지"); 
+            sms.put("user_id", userId);                                       // ✅(필수) SMS 아이디
+            sms.put("key", apiKey);                                           // ✅(필수) 인증키
+            sms.put("msg", "테스트 메시지"); 
             sms.put("msg", param.getFirst("msg") );                       // ✅(필수) 문자 메시지                          
-            // sms.put("receiver", "01111111111,01111111112");
+            sms.put("receiver", "01111111111,01111111112");
             sms.put("receiver", param.get("receiver").toString());        // ✅(필수) 받는 번호
-            // sms.put("sender", sender);                                        // ✅(필수) 보내는 번호
+            sms.put("sender", sender);                                        // ✅(필수) 보내는 번호
             sms.put("rdate", rdate);                                              // 예약일자 20231225
             sms.put("rtime", rtime);                                              // 예약시간 1230 (현재시간 10분이후부터가능)
             sms.put("testmode_yn", testmodeYn);                               // 테스트 모드 여부
-            // sms.put("testmode_yn", "Y");                                       
-            // sms.put("testmode_yn", "N");
-            // sms.put("title", "제목입력");
+            sms.put("testmode_yn", "Y");                                       
+            sms.put("testmode_yn", "N");
+            sms.put("title", "제목입력");
 
 
             // 💎 이미지 첨부 관련
