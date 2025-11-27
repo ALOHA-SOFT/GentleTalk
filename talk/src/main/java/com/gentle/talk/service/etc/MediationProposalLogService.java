@@ -30,5 +30,8 @@ public interface MediationProposalLogService extends BaseService<MediationPropos
     
     // 중재안 캐시 조회 또는 생성
     MediationProposalLog getOrCreateProposal(Long categoryNo, String conflictSituation, String requirements);
+
+    // 이슈로부터 중재안 생성 (AI 활용)
+    MediationProposalLog generateProposalsFromIssue(Long issueNo, Long categoryNo);
     
 }

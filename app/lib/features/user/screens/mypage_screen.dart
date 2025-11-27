@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
+import '../../../core/constants/config.dart';
 import '../../../core/models/user_models.dart';
 import '../../auth/widgets/custom_text_field.dart';
 import '../../auth/widgets/gender_selector.dart';
@@ -14,13 +19,33 @@ class MyPageScreen extends StatefulWidget {
 }
 
 class _MyPageScreenState extends State<MyPageScreen> {
-  final _usernameController = TextEditingController(text: 'gentlman');
-  final _passwordController = TextEditingController(text: '*************');
-  final _emailController = TextEditingController(text: 'gentletalk@naver.com');
-  final _phoneController = TextEditingController(text: '010-1111-2222');
-  final _nameController = TextEditingController(text: '안젠틀');
-  final _birthdateController = TextEditingController(text: '1999.01.01');
+  final _usernameController = TextEditingController();   // 로그인 ID / username
+  final _passwordController = TextEditingController();   // 새 비밀번호 (UI에만 사용)
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _nameController = TextEditingController();
+  final _birthdateController = TextEditingController();
   Gender _selectedGender = Gender.male;
+
+  bool _isLoading = false;
+  bool _passwordEdited = false; // 비밀번호를 실제로 수정했는지 여부
+
+  static const String _passwordMask = '***********';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMyInfo();
+
+    // 비밀번호 컨트롤러 리스너: 사용자가 마스킹값에서 변경했는지 체크
+    _passwordController.addListener(() {
+      if (!_passwordEdited && _passwordController.text != _passwordMask) {
+        setState(() {
+          _passwordEdited = true;
+        });
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -33,15 +58,137 @@ class _MyPageScreenState extends State<MyPageScreen> {
     super.dispose();
   }
 
-  void _handleUpdate() {
-    // TODO: Implement update API call
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('프로필이 수정되었습니다')));
+  /// 내 정보 조회
+  Future<void> _loadMyInfo() async {
+    setState(() => _isLoading = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt');
+
+      if (token == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('로그인이 필요합니다')),
+        );
+        return;
+      }
+
+      final uri = Uri.parse('${AppConfig.baseUrl}/api/v1/auth/me');
+
+      final res = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final user = data['user'] ?? {};
+
+        setState(() {
+          _usernameController.text = user['username'] ?? '';
+          _emailController.text = user['email'] ?? '';
+          _phoneController.text = user['tel'] ?? '';
+          _nameController.text = user['name'] ?? '';
+          final birth = user['birth']?.toString() ?? '';
+          if (birth.isNotEmpty) {
+            // 예: "1992-05-06" → "1992.05.06"
+            final parts = birth.split('-');
+            if (parts.length == 3) {
+              _birthdateController.text = '${parts[0]}.${parts[1]}.${parts[2]}';
+            } else {
+              _birthdateController.text = birth; // 일단 그대로
+            }
+          } else {
+            _birthdateController.text = '';
+          }
+
+          final genderStr = (user['gender'] ?? '').toString().toLowerCase();
+          if (genderStr == 'female') {
+            _selectedGender = Gender.female;
+          } else {
+            _selectedGender = Gender.male;
+          }
+
+          _passwordController.text = _passwordMask;
+          _passwordEdited = false;
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('내 정보 조회 실패: ${res.statusCode}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('서버와 통신 중 오류가 발생했습니다')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  /// 내 정보 수정
+  Future<void> _handleUpdate() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt');
+      if (token == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('로그인이 필요합니다')),
+        );
+        return;
+      }
+
+      final body = <String, dynamic>{
+        'username': _usernameController.text.trim(),
+        'name': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'tel': _phoneController.text.trim(),
+        'birth': _birthdateController.text.trim(),
+        'gender': _selectedGender.name, // 'male' / 'female'
+        'type': 'USER',
+      };
+
+      if (_passwordEdited &&
+          _passwordController.text.isNotEmpty &&
+          _passwordController.text != _passwordMask) {
+        body['newPassword'] = _passwordController.text.trim();
+      }
+
+      final uri = Uri.parse('${AppConfig.baseUrl}/api/v1/auth/me');
+      final res = await http.put(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      );
+
+      if (res.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('프로필이 수정되었습니다')),
+        );
+        setState(() {
+          _passwordEdited = false;
+          _passwordController.text = _passwordMask;
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('수정 실패: ${res.statusCode}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('서버와 통신 중 오류가 발생했습니다')),
+      );
+    }
   }
 
   void _handleWithdraw() {
-    // TODO: Implement withdrawal
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -53,9 +200,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
             child: const Text('취소'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              // TODO: Implement withdrawal
+              // 🔹 탈퇴 API 호출 자리 (DELETE /api/v1/auth/me 등)
+              // 탈퇴 후 SharedPreferences 비우고 로그인 화면으로 이동 등 처리
             },
             child: const Text('탈퇴'),
           ),
@@ -92,6 +240,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: 30),
+                    if (_isLoading) ...[
+                      const Center(child: CircularProgressIndicator()),
+                      const SizedBox(height: 20),
+                    ],
                     // Profile Image
                     Container(
                       width: 62,
@@ -112,13 +264,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       label: '아이디',
                       icon: Icons.person_outline,
                       controller: _usernameController,
+                      readOnly: true,
                     ),
                     const SizedBox(height: 20),
+                    // 비밀번호: 마스킹된 값 보여주고, 사용자가 수정하면 새 비밀번호로 반영
                     CustomTextField(
                       label: '비밀번호',
                       icon: Icons.lock_outline,
                       controller: _passwordController,
                       obscureText: true,
+                      readOnly: false,
                     ),
                     const SizedBox(height: 20),
                     CustomTextField(
@@ -126,6 +281,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       icon: Icons.email_outlined,
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
+                      readOnly: false,
                     ),
                     const SizedBox(height: 20),
                     CustomTextField(
@@ -133,12 +289,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       icon: Icons.phone_outlined,
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
+                      readOnly: false,
                     ),
                     const SizedBox(height: 20),
                     CustomTextField(
                       label: '이름',
                       icon: Icons.badge_outlined,
                       controller: _nameController,
+                      readOnly: false,
                     ),
                     const SizedBox(height: 20),
                     CustomTextField(
@@ -146,6 +304,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       icon: Icons.calendar_today_outlined,
                       controller: _birthdateController,
                       keyboardType: TextInputType.datetime,
+                      readOnly: false,
                     ),
                     const SizedBox(height: 20),
                     // Gender Selector

@@ -73,4 +73,11 @@
         WHERE username = #{username} AND email = #{email} AND enabled = 1
     </select>
 
+    <!-- 전화번호로 사용자 찾기 (상대방 찾기용) -->
+    <select id="findByPhone" resultMap="UserMap">
+        SELECT *
+        FROM users
+        WHERE tel = #{tel} AND enabled = 1
+    </select>
+
 </mapper>

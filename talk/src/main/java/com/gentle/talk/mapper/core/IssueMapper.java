@@ -29,5 +29,14 @@ public interface IssueMapper extends BaseMapper<Issue> {
   
   // 최근 이슈 조회
   public List<Issue> selectRecentIssues(@Param("userNo") Long userNo, @Param("limit") int limit);
+
+  // 이슈 번호로 조회
+  public Issue selectByIssueNo(Long issueNo);
+
+  // 분석 결과 및 상태 업데이트
+  public int updateAnalysisResult(Issue issue);
+
+  // 이슈 테이블에 상대방 정보 매칭
+  public List<Issue> selectByOpponentContactWithoutUserNo(@Param("phone") String phone);
   
 }

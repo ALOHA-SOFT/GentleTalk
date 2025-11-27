@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
+import '../../../core/constants/config.dart';
 
 class ConflictInputScreen extends StatefulWidget {
   const ConflictInputScreen({super.key});
@@ -13,15 +18,20 @@ class _ConflictInputScreenState extends State<ConflictInputScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<ChatMessage> _messages = [];
-  int _questionStep =
-      0; // 0: first question, 1: second question, 2: both answered
+
+  int _questionStep = 0;
+  String? _answer1;     
+  String? _answer2;    
+  int? _issueNo;  
 
   @override
   void initState() {
     super.initState();
-    // Initial bot message
     _messages.add(
-      ChatMessage(text: '현재 겪고 있는 갈등상황에 대해 구체적으로 말씀해 주시겠어요?', isUser: false),
+      ChatMessage(
+        text: '현재 겪고 있는 갈등상황에 대해 구체적으로 말씀해 주시겠어요?',
+        isUser: false,
+      ),
     );
   }
 
@@ -32,18 +42,82 @@ class _ConflictInputScreenState extends State<ConflictInputScreen> {
     super.dispose();
   }
 
+Future<void> _submitIssue() async {
+    final first = _answer1 ?? '';
+    final second = _answer2 ?? '';
+
+    if (first.isEmpty && second.isEmpty) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt');
+
+      final uri = Uri.parse('${AppConfig.baseUrl}/api/v1/issues');
+
+      final body = {
+        'conflictSituation': first,
+        'requirements': second,
+      };
+
+      final headers = {
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+
+      final res = await http.post(
+        uri,
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      if (!mounted) return;
+
+      if (res.statusCode == 201 || res.statusCode == 200) {
+        // ✅ 응답에서 issueNo 추출
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final no = data['no']; // 백엔드 Issue 객체의 PK 필드 이름이 'no'라고 가정
+
+        setState(() {
+          _issueNo = (no is int) ? no : int.tryParse(no.toString());
+          _questionStep = 2; // 분석 버튼 노출
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('갈등 상황이 저장되었습니다.')),
+        );
+      } else {
+        debugPrint("Error body: ${res.body}");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('저장 실패: ${res.statusCode}')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      debugPrint('submitIssue error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('서버와 통신 중 오류가 발생했습니다')),
+      );
+    }
+  }
+
   void _sendMessage() {
-    if (_messageController.text.trim().isEmpty) return;
+    final text = _messageController.text.trim();
+    if (text.isEmpty) return;
 
     setState(() {
-      _messages.add(ChatMessage(text: _messageController.text, isUser: true));
+      _messages.add(ChatMessage(text: text, isUser: true));
     });
+
+    if (_questionStep == 0) {
+      _answer1 = text;
+    } else if (_questionStep == 1) {
+      _answer2 = text;
+    }
 
     _messageController.clear();
 
-    // Add next bot question based on step
     if (_questionStep == 0) {
-      // After first answer, ask second question
+      // 첫 번째 답변 후 두 번째 질문
       Future.delayed(const Duration(milliseconds: 500), () {
         setState(() {
           _messages.add(
@@ -57,10 +131,8 @@ class _ConflictInputScreenState extends State<ConflictInputScreen> {
         _scrollToBottom();
       });
     } else if (_questionStep == 1) {
-      // After second answer, mark as complete
-      setState(() {
-        _questionStep = 2;
-      });
+      // 두 번째 답변까지 끝 → DB 저장 호출
+      _submitIssue(); // ✅ 여기서 DB 등록 + issueNo 세팅
     }
 
     _scrollToBottom();
@@ -79,7 +151,18 @@ class _ConflictInputScreenState extends State<ConflictInputScreen> {
   }
 
   void _handleAnalyze() {
-    Navigator.pushNamed(context, '/request-analysis');
+    if (_issueNo == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('이슈 번호를 찾을 수 없습니다. 다시 시도해주세요.')),
+      );
+      return;
+    }
+
+    Navigator.pushNamed(
+      context,
+      '/request-analysis',
+      arguments: {'issueNo': _issueNo}, // ✅ issueNo 전달
+    );
   }
 
   @override

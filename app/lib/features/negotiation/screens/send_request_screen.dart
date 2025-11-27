@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
+import '../../../core/constants/config.dart';
 
 class SendRequestScreen extends StatefulWidget {
   const SendRequestScreen({super.key});
@@ -13,6 +18,26 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
 
+  // ⭐ negotiationMessage 상태 변수
+  String? _negotiationMessage;
+  bool _loadingMessage = true;
+  String? _issueNo;
+  bool _initialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+    _issueNo = args?['issueNo']?.toString();
+
+    _fetchNegotiationMessage();
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -20,8 +45,157 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
     super.dispose();
   }
 
-  void _handleSend() {
+  
+  void _handleSend() async {
+    final receiverName = _nameController.text.isEmpty ? "상대방" : _nameController.text;
+    final phone = _phoneController.text.trim();
+    final rawMessage = _negotiationMessage ?? "";
+
+    if (phone.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("전화번호를 입력해주세요")));
+      return;
+    }
+
+    // ✔️ 1) 먼저 서버에 상대방 정보 저장 요청
+    final ok = await updateOpponentInfo(_issueNo!, receiverName, phone);
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("상대방 정보를 저장하지 못했습니다.")),
+      );
+      return;
+    }
+
+    // ✔️ 2) 메시지 렌더링
+    final finalMessage = rawMessage.replaceAll("[상대방 이름]", receiverName);
+
+    // ✔️ 3) 문자 발송
+    final success = await sendSmsApi(phone, finalMessage);
+
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("문자 발송에 실패했습니다. 다시 시도해주세요.")),
+      );
+      return;
+    }
+
+    // ✔️ 4) 완료 페이지 이동
     Navigator.pushNamed(context, '/request-complete');
+  }
+
+    Future<bool> sendSmsApi(String phone, String message) async {
+    final url = Uri.parse('${AppConfig.baseUrl}/api/v1/sms/send');
+
+    final body = {
+      "msg": message,
+      "receiver": phone,
+      "rdate": "",
+      "rtime": "",
+      "testmode_yn": "Y", // 필요에 따라 N으로
+    };
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: body,
+      );
+
+      if (response.statusCode != 200) {
+        return false;
+      }
+
+      final respText = response.body;
+      // 디버깅용
+      debugPrint('📨 SMS 응답: $respText');
+
+      // 🔹 실패 패턴: 인증오류, 전송 실패, -101 등 포함 시 실패로 간주
+      if (respText.contains('인증오류') ||
+          respText.contains('전송 실패') ||
+          respText.contains('-101')) {
+        return false;
+      }
+
+      // 🔹 성공 패턴: result_code=1 이라는 문자열 포함되면 성공으로 간주
+      if (respText.contains('result_code=1') ||
+          respText.contains('result_code=01')) {
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      debugPrint("문자 API 예외 발생: $e");
+      return false;
+    }
+  }
+
+  // ⭐ API 호출: negotiationMessage 가져오기
+  Future<void> _fetchNegotiationMessage() async {
+    if (_issueNo == null) {
+      setState(() {
+        _negotiationMessage = "이슈 번호가 없습니다.";
+        _loadingMessage = false;
+      });
+      return;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('accessToken');
+
+      final uri = Uri.parse('${AppConfig.baseUrl}/api/v1/issues/$_issueNo');
+
+      final headers = {
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+
+      final response = await http.get(uri, headers: headers);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        setState(() {
+          _negotiationMessage =
+              data['negotiationMessage'] ?? '협상 메시지가 존재하지 않습니다.';
+          _loadingMessage = false;
+        });
+      } else {
+        setState(() {
+          _negotiationMessage =
+              "서버 오류(${response.statusCode}). 메시지를 가져올 수 없습니다.";
+          _loadingMessage = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _negotiationMessage = "오류 발생: $e";
+        _loadingMessage = false;
+      });
+    }
+  }
+
+  Future<bool> updateOpponentInfo(String issueNo, String name, String phone) async {
+    final url = Uri.parse('${AppConfig.baseUrl}/api/v1/issues/$issueNo/opponent');
+
+    final body = {
+      "opponentName": name,
+      "opponentContact": phone,
+    };
+
+    try {
+      final response = await http.put(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
   }
 
   @override
@@ -52,21 +226,23 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: 20),
-                    // Name input
+
                     _buildInputField(
                       controller: _nameController,
                       icon: Icons.person_outline,
                       hint: '상대방 이름',
                     ),
+
                     const SizedBox(height: 20),
-                    // Phone input
+
                     _buildInputField(
                       controller: _phoneController,
                       icon: Icons.phone_outlined,
                       hint: '전화번호',
                     ),
+
                     const SizedBox(height: 20),
-                    // Info text
+
                     Text(
                       '아래와 같이 메세지가 발송됩니다.',
                       style: AppTextStyles.body.copyWith(
@@ -75,12 +251,16 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
                         color: AppColors.textSecondary,
                       ),
                     ),
+
                     const SizedBox(height: 20),
-                    // Message preview
+
+                    // ⭐ 협상 메시지 프리뷰
                     _buildMessagePreview(),
+
                     const SizedBox(height: 30),
-                    // Send button
+
                     _buildPrimaryButton('발송 하기', _handleSend),
+
                     const SizedBox(height: 30),
                   ],
                 ),
@@ -110,6 +290,12 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
           Expanded(
             child: TextField(
               controller: controller,
+              onChanged: (_) {
+                // 상대방 이름 바뀔 때 프리뷰 다시 그리기
+                if (controller == _nameController) {
+                  setState(() {});
+                }
+              },
               decoration: InputDecoration(
                 hintText: hint,
                 hintStyle: AppTextStyles.body.copyWith(
@@ -128,7 +314,23 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
     );
   }
 
+  // ⭐ negotiationMessage 표시
   Widget _buildMessagePreview() {
+    if (_loadingMessage) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        alignment: Alignment.center,
+        child: const CircularProgressIndicator(),
+      );
+    }
+
+    String previewText = _negotiationMessage ?? "";
+    previewText = previewText.replaceAll(
+      "[상대방 이름]",
+      _nameController.text.isEmpty ? "상대방" : _nameController.text,
+    );
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -153,25 +355,7 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
         ],
       ),
       child: Text(
-        '''수신인: [임대인 이름] 
-발신인: [임차인 이름] 
-제목: [임차인 이름] 임대차 계약 건에 대한 협의 요청
-
-안녕하세요,
-[임차인 이름]입니다.
-저희의 임대차 계약과 관련하여 원활한 협의를 진행하고자,
-갈등조정 플랫폼 '젠틀톡'을 통해 연락드립니다.
-
-저의 현재 상황은 다음과 같습니다.
-계약서: [계약서 내용 중 관련 조항]
-이사 예정일: [이사 희망 날짜]
-감정 소모 없이 합리적인 해결책을 찾고 싶습니다.
-
-본 메시지에 대한 답변을 젠틀톡 플랫폼에 남겨주시면, 
-양측의 입장을 정리하여 보다 효율적인 대화를 진행할 수 
-있도록 돕겠습니다.
-
-감사합니다.''',
+        previewText,
         style: AppTextStyles.body.copyWith(
           fontSize: 14,
           height: 1.5,
@@ -201,7 +385,7 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
               BoxShadow(
                 color: Colors.black.withOpacity(0.25),
                 blurRadius: 4,
-                offset: const Offset(0, 4),
+                offset: Offset(0, 4),
               ),
             ],
           ),

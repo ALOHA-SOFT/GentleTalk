@@ -107,4 +107,29 @@
         LIMIT #{limit}
     </select>
 
+    <!-- 이슈 번호로 조회 -->
+    <select id="selectByIssueNo" resultMap="IssueMap">
+        SELECT *
+        FROM issues
+        WHERE no = #{issueNo}
+    </select>
+
+    <!-- 분석 결과 및 상태 업데이트 -->
+    <update id="updateAnalysisResult">
+        UPDATE issues
+        SET 
+        negotiation_message = #{negotiationMessage},
+        analysis_result = #{analysisResult},
+        status = #{status}
+        WHERE no = #{no}
+    </update>
+
+    <!-- 이슈 테이블에 상대방 정보 매칭 -->
+    <select id="selectByOpponentContactWithoutUserNo" resultMap="IssueMap">
+        SELECT *
+        FROM issues
+        WHERE opponent_contact = #{phone}
+        AND (opponent_user_no IS NULL OR opponent_user_no = 0)
+    </select>
+
 </mapper>

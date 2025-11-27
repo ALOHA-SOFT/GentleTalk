@@ -3,6 +3,7 @@ package com.gentle.talk.service.core;
 import com.github.pagehelper.PageInfo;
 import com.gentle.talk.domain.common.QueryParams;
 import com.gentle.talk.domain.core.Issue;
+import com.gentle.talk.domain.users.Users;
 import com.gentle.talk.service.BaseService;
 
 import java.util.List;
@@ -44,5 +45,19 @@ public interface IssueService extends BaseService<Issue> {
     
     // 상태 변경
     boolean updateStatus(Long issueNo, String status);
-    
+
+    // 이슈 번호로 조회
+    Issue selectByIssueNo(Long issueNo);
+ 
+    // 요약 분석 요청
+    Issue analyzeIssue(Long issueNo);
+
+    // 상대방 정보 등록
+    boolean updateOpponent(Long issueNo, String name, String contact);
+
+    // 회원 가입 후 상대방 이슈 연결
+    void linkOpponentIssuesAfterSignup(Users user);
+
+    // 내가 참여한 모든 이슈 (발신 + 수신)
+    List<Issue> selectMyIssues(Long userNo);
 }

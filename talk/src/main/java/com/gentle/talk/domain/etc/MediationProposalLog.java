@@ -1,6 +1,7 @@
 package com.gentle.talk.domain.etc;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.apache.ibatis.type.Alias;
 
@@ -11,6 +12,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.gentle.talk.domain.Base;
 
 import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -53,4 +55,11 @@ public class MediationProposalLog extends Base {
   @TableField(exist = false)
   private IssueCategory category;           // 카테고리 정보
   
+  @TableField(exist = false)
+  private Long issueNo;
+
+  @TableField(exist = false)
+  private Integer sequence;
 }
+
+

@@ -1,10 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
 import '../widgets/bottom_nav_bar.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  String _userUsername = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _userUsername = prefs.getString('userUsername') ?? ''; // 로그인 시 저장한 키
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,12 +49,17 @@ class HomeScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '안재림님,',
+                            _userUsername.isNotEmpty
+                                ? '$_userUsername님'
+                                : '고객님',
                             style: AppTextStyles.heading.copyWith(fontSize: 21),
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            '어떤 갈등 상황이 있으신가요?\nGentlTalk 과 함께,\n상대방에게 요청할 사항을 먼저 분석해보고,\n원활한 협상을 진행해보세요~!',
+                            '어떤 갈등 상황이 있으신가요?\n'
+                            'GentlTalk과 함께,\n'
+                            '상대방에게 요청할 사항을 먼저 분석해보고,\n'
+                            '원활한 협상을 진행해보세요~!',
                             style: AppTextStyles.heading.copyWith(fontSize: 16),
                           ),
                         ],
@@ -48,8 +74,7 @@ class HomeScreen extends StatelessWidget {
                             context,
                             '진행중인\n협상',
                             'assets/images/진행중인협상.jpg',
-                            () =>
-                                _navigateTo(context, '/negotiations-progress'),
+                            () => _navigateTo(context, '/negotiations-progress'),
                           ),
                         ),
                         const SizedBox(width: 25),
@@ -92,8 +117,18 @@ class HomeScreen extends StatelessWidget {
                     }),
                     const SizedBox(height: 10),
                     // Logout Button
-                    _buildOutlinedButton('로그아웃', () {
-                      // TODO: Implement logout
+                    _buildOutlinedButton('로그아웃', () async {
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.remove('jwt');
+                      await prefs.remove('userName');
+                      await prefs.remove('userUsername');
+                      if (context.mounted) {
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          '/login',
+                          (route) => false,
+                        );
+                      }
                     }),
                     const SizedBox(height: 30),
                   ],

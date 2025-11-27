@@ -2,11 +2,14 @@ package com.gentle.talk.controller.v1;
 
 import com.gentle.talk.domain.users.Users;
 import com.gentle.talk.security.jwt.JwtTokenProvider;
+import com.gentle.talk.service.core.IssueService;
 import com.gentle.talk.service.users.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -29,6 +32,7 @@ public class AuthController {
     private final UserDetailsService userDetailsService;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserService userService;
+    private final IssueService issueService;
 
     @PostMapping("/login")
     @Operation(summary = "로그인", description = "사용자명과 비밀번호로 로그인하여 JWT 토큰 발급")
@@ -121,6 +125,9 @@ public class AuthController {
         }
     }
 
+    /**
+     * 현재 로그인 사용자 정보 조회
+     */
     @GetMapping("/me")
     @Operation(summary = "현재 사용자 정보", description = "JWT 토큰으로 현재 로그인한 사용자 정보 조회")
     public ResponseEntity<?> getCurrentUser(Authentication authentication) {
@@ -137,15 +144,27 @@ public class AuthController {
             String username = authentication.getName();
             Users user = userService.selectByUsername(username);
 
+            if (user == null) {
+                return ResponseEntity.status(404).body(Map.of(
+                        "error", "사용자 없음",
+                        "message", "사용자 정보를 찾을 수 없습니다."
+                ));
+            }
+
+            Map<String, Object> userMap = new HashMap<>();
+            userMap.put("no", user.getNo());
+            userMap.put("username", user.getUsername());
+            userMap.put("name", user.getName());
+            userMap.put("email", user.getEmail());
+            userMap.put("tel", user.getTel());
+            userMap.put("birth", user.getBirth());
+            userMap.put("gender", user.getGender());
+            userMap.put("type", user.getType());   
+            userMap.put("address", user.getAddress()); 
+            userMap.put("enabled", user.getEnabled());
+
             Map<String, Object> response = new HashMap<>();
-            response.put("user", Map.of(
-                    "no", user.getNo(),
-                    "username", user.getUsername(),
-                    "name", user.getName(),
-                    "email", user.getEmail(),
-                    "tel", user.getTel(),
-                    "enabled", user.getEnabled()
-            ));
+            response.put("user", userMap);
 
             return ResponseEntity.ok(response);
 
@@ -153,6 +172,90 @@ public class AuthController {
             log.error("현재 사용자 정보 조회 실패", e);
             return ResponseEntity.status(500).body(Map.of(
                     "error", "조회 실패",
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * 현재 로그인 사용자 정보 수정
+     * Flutter 에서 보내는 body:
+     *  {
+     *    "username": "...",
+     *    "name": "...",
+     *    "email": "...",
+     *    "tel": "...",
+     *    "birth": "...",
+     *    "gender": "male/female",
+     *    "type": "USER",
+     *    "newPassword": "변경할 비번" (선택)
+     *  }
+     */
+    @PutMapping("/me")
+    @Operation(summary = "현재 사용자 정보 수정", description = "로그인한 사용자의 정보를 수정합니다.")
+    public ResponseEntity<?> updateCurrentUser(
+            Authentication authentication,
+            @RequestBody Users updateReq
+    ) {
+        log.info("## 현재 사용자 정보 수정 요청 ##");
+
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(401).body(Map.of(
+                        "error", "인증되지 않음",
+                        "message", "로그인이 필요합니다."
+                ));
+            }
+
+            String username = authentication.getName();
+            Users user = userService.selectByUsername(username);
+
+            if (user == null) {
+                return ResponseEntity.status(404).body(Map.of(
+                        "error", "사용자 없음",
+                        "message", "사용자 정보를 찾을 수 없습니다."
+                ));
+            }
+
+            if (updateReq.getName() != null) {
+                user.setName(updateReq.getName());
+            }
+            if (updateReq.getEmail() != null) {
+                user.setEmail(updateReq.getEmail());
+            }
+            if (updateReq.getTel() != null) {
+                user.setTel(updateReq.getTel());
+            }
+            if (updateReq.getBirth() != null) {
+                user.setBirth(updateReq.getBirth());
+            }
+            if (updateReq.getGender() != null) {
+                user.setGender(updateReq.getGender());
+            }
+            if (updateReq.getType() != null) {
+                user.setType(updateReq.getType());
+            }
+
+            // 새 비밀번호가 들어온 경우에만 변경
+            if (updateReq.getNewPassword() != null &&
+                !updateReq.getNewPassword().trim().isEmpty()) {
+                user.setPassword(updateReq.getNewPassword().trim());
+            }
+
+            boolean result = userService.updateById(user);
+
+            if (result) {
+                log.info("현재 사용자 정보 수정 성공 - username: {}", username);
+                return ResponseEntity.ok("사용자 정보가 수정되었습니다.");
+            } else {
+                log.warn("현재 사용자 정보 수정 실패 - username: {}", username);
+                return ResponseEntity.status(400).body("사용자 정보 수정에 실패했습니다.");
+            }
+
+        } catch (Exception e) {
+            log.error("현재 사용자 정보 수정 중 예외 발생", e);
+            return ResponseEntity.status(500).body(Map.of(
+                    "error", "수정 실패",
                     "message", e.getMessage()
             ));
         }
@@ -190,5 +293,50 @@ public class AuthController {
         public void setRefreshToken(String refreshToken) {
             this.refreshToken = refreshToken;
         }
+    }  // join() 있는 서비스
+
+    @PostMapping("/join")
+    public ResponseEntity<?> join(@RequestBody Users users) {
+        log.info("API 회원가입 요청: {}", users);
+
+        try {
+            // 아이디 중복 체크
+            Users existing = userService.selectByUsername(users.getUsername());
+            if (existing != null) {
+                return ResponseEntity
+                        .badRequest()
+                        .body("이미 존재하는 아이디입니다.");
+            }
+
+            if (users.getType() == null || users.getType().isBlank()) {
+                users.setType("USER");      // 기본 사용자 타입
+            }
+            if (users.getEnabled() == null) {
+                users.setEnabled(true);     // 기본 활성화
+            }
+
+            boolean result = userService.join(users);
+
+            if (result) {
+                // 🔥 여기서 실제 저장된 회원 정보 다시 조회 (no 포함)
+                Users saved = userService.selectByUsername(users.getUsername());
+                if (saved != null && saved.getTel() != null && !saved.getTel().isBlank()) {
+                // 🔥 이 사람의 전화번호로 저장된 issues.opponent_contact 들을
+                //     opponent_user_no = saved.no 로 매핑
+                issueService.linkOpponentIssuesAfterSignup(saved);
+            }
+                return ResponseEntity.status(HttpStatus.CREATED).build();
+            } else {
+                return ResponseEntity
+                        .status(HttpStatus.BAD_REQUEST)
+                        .body("회원가입 실패");
+            }
+        } catch (Exception e) {
+            log.error("회원가입 중 예외 발생 - username: {}", users.getUsername(), e);
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("서버 오류가 발생했습니다.");
+        }
     }
+
 }

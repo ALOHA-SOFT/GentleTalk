@@ -74,6 +74,7 @@ class _FindPasswordScreenState extends State<FindPasswordScreen> {
                       label: '아이디',
                       icon: Icons.person_outline,
                       controller: _usernameController,
+                      readOnly: false,
                     ),
                     const SizedBox(height: 20),
                     // Email Input
@@ -82,6 +83,7 @@ class _FindPasswordScreenState extends State<FindPasswordScreen> {
                       icon: Icons.email_outlined,
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
+                      readOnly: false,
                     ),
                     const SizedBox(height: 20),
                     // Find Password Button

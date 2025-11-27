@@ -44,5 +44,11 @@ public class Users extends Base {
 
   @TableField(exist = false)
   List<UserAuth> authList; // 권한 목록
+
+  private String type;     // 회원유형
+  private String gender;   // 성별
+  private String birth;    // 생년월일
+
+  private String address; // 주소 (DB에서 빠져야 할 항목 혹은 UI에 추가)
   
 }

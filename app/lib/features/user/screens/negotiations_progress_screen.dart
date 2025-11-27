@@ -1,10 +1,99 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
+import '../../../core/constants/config.dart';
 import '../widgets/bottom_nav_bar.dart';
 
-class NegotiationsProgressScreen extends StatelessWidget {
+import 'package:shared_preferences/shared_preferences.dart';
+
+class NegotiationsProgressScreen extends StatefulWidget {
   const NegotiationsProgressScreen({super.key});
+
+  @override
+  State<NegotiationsProgressScreen> createState() =>
+      _NegotiationsProgressScreenState();
+}
+
+class _NegotiationsProgressScreenState
+    extends State<NegotiationsProgressScreen> {
+  List<dynamic> _issues = [];
+  bool _isLoading = true;
+
+  /// 진행 중으로 볼 상태 목록
+  final List<String> progressStatuses = [
+    '대기',
+    '분석중',
+    '분석완료',
+    '상대방대기',
+    '상대방응답',
+    '중재안제시',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchIssues();
+  }
+
+  Future<void> _fetchIssues() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userNo = prefs.getInt('userNo');
+
+      if (userNo == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final response = await http.get(
+        Uri.parse('${AppConfig.baseUrl}/api/v1/issues/user/$userNo'),
+      );
+
+      if (response.statusCode == 200) {
+        List<dynamic> data = json.decode(response.body);
+
+        setState(() {
+          _issues = data.where((item) {
+            final status = (item["status"] ?? '').toString().trim();
+            return progressStatuses.contains(status);
+          }).toList();
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  /// 상태별 진행 스텝 (총 6단계)
+  int _statusStep(String status) {
+    switch (status.trim()) {
+      case '대기':
+        return 1;
+      case '분석중':
+        return 2;
+
+      case '분석완료':
+      case '분석실패':
+        return 3;
+
+      case '상대방대기':
+        return 4;
+      case '상대방응답':
+        return 5;
+      case '중재안제시':
+        return 6;
+
+      default:
+        return 1;
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -23,76 +112,83 @@ class NegotiationsProgressScreen extends StatelessWidget {
         ),
         centerTitle: false,
       ),
-      body: SafeArea(
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 345),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildNegotiationCard(
-                      context,
-                      '분석중',
-                      '프리랜서 계약 조건 분석 중',
-                      '2025.11.11',
-                      '2/6',
-                      const Color(0xFF001497),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _issues.isEmpty
+              ? const Center(child: Text("진행중인 협상이 없습니다."))
+              : SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 345),
+                      child: ListView.separated(
+                        itemCount: _issues.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: 25),
+                        itemBuilder: (context, index) {
+                          final item = _issues[index];
+
+                          final status =
+                              (item['status'] ?? '').toString().trim();
+                          final fullTitle =
+                              (item['conflictSituation'] ?? '').toString();
+                          final title = _shortenTitle(fullTitle, 20);
+                          final rawDate =
+                              (item['createdAt'] ?? '').toString();
+                          final date = rawDate.length >= 10
+                              ? rawDate.substring(0, 10)
+                              : rawDate;
+
+                          final step = _statusStep(status);
+                          final issueNo = item['no'];
+
+                          return _buildNegotiationCard(
+                            context,
+                            status,
+                            title,
+                            date,
+                            '$step/6',
+                            _statusColor(status),
+                            issueNo,
+                          );
+                        },
+                      ),
                     ),
-                    const SizedBox(height: 25),
-                    _buildNegotiationCard(
-                      context,
-                      '대기',
-                      '룸메이트 청소 담당 정하기',
-                      '2025.11.11',
-                      '1/6',
-                      const Color(0xFF409CFF),
-                    ),
-                    const SizedBox(height: 25),
-                    _buildNegotiationCard(
-                      context,
-                      '분석완료',
-                      '일정 합의안 분석 완료',
-                      '2025.11.11',
-                      '3/6',
-                      const Color(0xFF6EBD82),
-                    ),
-                    const SizedBox(height: 25),
-                    _buildNegotiationCard(
-                      context,
-                      '중재안제시',
-                      '협상 제안서 전달 완료 – 응답 대기',
-                      '2025.11.11',
-                      '4/6',
-                      const Color(0xFFB452FF),
-                    ),
-                    const SizedBox(height: 25),
-                    _buildNegotiationCard(
-                      context,
-                      '상대방대기',
-                      'AI 추천: 임대료 절충안',
-                      '2025.11.11',
-                      '5/6',
-                      const Color(0xFFFFB340),
-                    ),
-                    const SizedBox(height: 30),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          ),
-        ),
-      ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: 2,
-        onTap: (index) {
-          BottomNavBar.navigateToIndex(context, index);
-        },
+        onTap: (index) => BottomNavBar.navigateToIndex(context, index),
       ),
     );
+  }
+
+  /// 상태 컬러 (아이콘/프로그레스바/뱃지)
+  Color _statusColor(String? rawStatus) {
+    final status = (rawStatus ?? '').trim();
+    switch (status) {
+      case '분석중':
+        return const Color(0xFF001497); // 딥블루
+      case '대기':
+        return const Color(0xFF409CFF); // 라이트블루
+      case '분석완료':
+        return const Color(0xFF6EBD82); // 그린
+      case '중재안제시':
+        return const Color(0xFFB452FF); // 퍼플
+      case '상대방대기':
+        return const Color(0xFFFFB340); // 옐로우/오렌지
+      case '상대방응답':
+        return const Color(0xFFD96E40); // ✅ 진한 오렌지
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _shortenTitle(String text, int maxLen) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return '제목 없음';
+    if (trimmed.length <= maxLen) return trimmed;
+    return '${trimmed.substring(0, maxLen)}…';
   }
 
   Widget _buildNegotiationCard(
@@ -102,13 +198,25 @@ class NegotiationsProgressScreen extends StatelessWidget {
     String date,
     String progress,
     Color progressColor,
+    dynamic issueNo,
   ) {
+    double progressPercent = 0.0;
+    if (progress.contains('/')) {
+      final parts = progress.split('/');
+      progressPercent = int.parse(parts[0]) / int.parse(parts[1]);
+    }
+
     return GestureDetector(
       onTap: () {
+        debugPrint("📌 [Tap] issueNo = $issueNo (${issueNo.runtimeType})");
+
         Navigator.pushNamed(
           context,
           '/negotiation-detail',
-          arguments: {'status': status},
+          arguments: {
+            'status': status,
+            'issueNo': issueNo,
+          },
         );
       },
       child: Container(
@@ -129,7 +237,6 @@ class NegotiationsProgressScreen extends StatelessWidget {
           children: [
             Row(
               children: [
-                // Icon
                 Container(
                   width: 58,
                   height: 58,
@@ -144,7 +251,6 @@ class NegotiationsProgressScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10.9),
-                // Content
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,12 +285,10 @@ class NegotiationsProgressScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                // More Icon
                 Icon(Icons.more_vert, size: 22, color: AppColors.textPrimary),
               ],
             ),
             const SizedBox(height: 16),
-            // Progress Bar
             Row(
               children: [
                 Expanded(
@@ -198,7 +302,7 @@ class NegotiationsProgressScreen extends StatelessWidget {
                         ),
                       ),
                       FractionallySizedBox(
-                        widthFactor: 0.33, // 2/6 약 33%
+                        widthFactor: progressPercent,
                         child: Container(
                           height: 4,
                           decoration: BoxDecoration(

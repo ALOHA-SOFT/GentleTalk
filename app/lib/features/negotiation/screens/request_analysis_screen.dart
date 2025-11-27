@@ -1,9 +1,106 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
+import '../../../core/constants/config.dart';
 
-class RequestAnalysisScreen extends StatelessWidget {
+import 'package:animated_text_kit/animated_text_kit.dart';
+
+
+class RequestAnalysisScreen extends StatefulWidget {
   const RequestAnalysisScreen({super.key});
+
+  @override
+  State<RequestAnalysisScreen> createState() => _RequestAnalysisScreenState();
+}
+
+class _RequestAnalysisScreenState extends State<RequestAnalysisScreen> {
+  String _userUsername = '';
+  bool _initialized = false;
+
+  bool _isLoading = true;
+  String? _errorMessage;
+  String? _analysisResult;
+  String? _issueNo; // arguments에서 받아올 값
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _userUsername = prefs.getString('userUsername') ?? ''; // 로그인 시 저장한 키
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+    _issueNo = args?['issueNo']?.toString();
+
+    _fetchAnalysis();
+  }
+
+  Future<void> _fetchAnalysis() async {
+    if (_issueNo == null) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = '이슈 번호가 전달되지 않았습니다.';
+      });
+      return;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('accessToken'); // 토큰 쓰고 있으면
+
+      final uri = Uri.parse('${AppConfig.baseUrl}/api/v1/issues/$_issueNo/analyze');
+
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+
+      final response = await http.post(uri, headers: headers);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        // ✅ 백엔드 Issue 엔티티 JSON 구조에 맞춰서 필드명 확인
+        // 예: { "id": "...", "conflictSituation": "...", "requirements": "...", "analysisResult": "..." }
+        final analysis =
+            data['analysisResult'] ?? '';
+
+        setState(() {
+          _analysisResult =
+              (analysis as String).isNotEmpty ? analysis : '분석 결과가 없습니다.';
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = '서버 오류 (${response.statusCode})';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = '요청 중 오류가 발생했습니다.\n$e';
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,13 +129,12 @@ class RequestAnalysisScreen extends StatelessWidget {
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 345),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 20),
-                        // Bot message
-                        _buildBotBubble('안젠틀님의, \n요구조건을 고려하여 분석한 결과입니다.'),
+                        _buildBotBubble('${_userUsername.isNotEmpty ? _userUsername : "안젠틀"}님의,\n요구조건을 고려하여 분석한 결과입니다.'),
                         const SizedBox(height: 12),
-                        // Analysis result with gradient
-                        _buildAnalysisResult(),
+                        _buildBody(),
                         const SizedBox(height: 30),
                       ],
                     ),
@@ -46,18 +142,47 @@ class RequestAnalysisScreen extends StatelessWidget {
                 ),
               ),
             ),
-            // Bottom button
             Padding(
               padding: const EdgeInsets.all(24.0),
               child: _buildPrimaryButton(
                 '협상 요청',
-                () => Navigator.pushNamed(context, '/send-request'),
+                () => Navigator.pushNamed(
+                        context,
+                        '/send-request',
+                        arguments: {'issueNo': _issueNo},
+                      ),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  // 로딩/에러/결과를 한 번에 처리하는 위젯
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 40.0),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 20.0),
+        child: Text(
+          _errorMessage!,
+          style: AppTextStyles.body.copyWith(
+            fontSize: 14,
+            color: Colors.red,
+          ),
+        ),
+      );
+    }
+
+    // 정상 결과
+    return _buildAnalysisResult(_analysisResult ?? '분석 결과가 없습니다.');
   }
 
   Widget _buildBotBubble(String text) {
@@ -94,56 +219,72 @@ class RequestAnalysisScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAnalysisResult() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xCC46D2FD), // 80% opacity
-            Color(0xCC5351F0), // 80% opacity
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(12),
-          topRight: Radius.circular(12),
-          bottomLeft: Radius.circular(0),
-          bottomRight: Radius.circular(12),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
+  // 🔥 분석 결과를 서버에서 받아온 텍스트로 표시 + 타이핑 애니메이션
+Widget _buildAnalysisResult(String resultText) {
+  final bool isLoading = resultText.isEmpty;
+
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        colors: [
+          Color(0xCC46D2FD),
+          Color(0xCC5351F0),
         ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
       ),
-      child: Text(
-        '''⚖️ 주요 쟁점
-교통사고 이후 합의금 산정 기준에 대한 의견 불일치
-치료비 및 후유증 보상 범위에 대한 이견
-보험사 측의 지연된 대응과 불충분한 설명
-
-💬 요구 조건
-실제 치료비와 통원비 전액 보상
-후유증 가능성에 따른 추가 합의금 반영
-신속하고 투명한 합의 절차 진행
-
-📚 제시 근거
-병원 진단서 및 치료 내역서 제출 완료
-동일 사례 평균 합의금 데이터 비교
-보험사 약관 내 손해배상 기준 조항 근거 제시''',
-        style: AppTextStyles.body.copyWith(
-          fontSize: 14,
-          height: 1.5,
-          color: AppColors.textPrimary,
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(12),
+        topRight: Radius.circular(12),
+        bottomLeft: Radius.circular(0),
+        bottomRight: Radius.circular(12),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.05),
+          blurRadius: 10,
+          offset: const Offset(0, 5),
         ),
-      ),
-    );
-  }
+      ],
+    ),
+    child: isLoading
+        ? AnimatedTextKit(
+            animatedTexts: [
+              TypewriterAnimatedText(
+                'AI is generating a detailed explanation...',
+                textStyle: AppTextStyles.body.copyWith(
+                  fontSize: 14,
+                  height: 1.5,
+                  color: AppColors.textPrimary,
+                ),
+                speed: const Duration(milliseconds: 60),
+              ),
+            ],
+            repeatForever: true,
+            pause: const Duration(milliseconds: 1000),
+          )
+        : AnimatedTextKit(
+            animatedTexts: [
+              TypewriterAnimatedText(
+                resultText,
+                textStyle: AppTextStyles.body.copyWith(
+                  fontSize: 14,
+                  height: 1.5,
+                  color: AppColors.textPrimary,
+                ),
+                speed: const Duration(milliseconds: 20),
+              ),
+            ],
+            totalRepeatCount: 1,
+            isRepeatingAnimation: false,
+            displayFullTextOnTap: true,
+            stopPauseOnTap: true,
+          ),
+  );
+}
+
 
   Widget _buildPrimaryButton(String text, VoidCallback onPressed) {
     return SizedBox(
