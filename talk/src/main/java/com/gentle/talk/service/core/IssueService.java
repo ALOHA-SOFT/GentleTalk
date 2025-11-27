@@ -58,6 +58,6 @@ public interface IssueService extends BaseService<Issue> {
     // 회원 가입 후 상대방 이슈 연결
     void linkOpponentIssuesAfterSignup(Users user);
 
-    // ✅ 내가 참여한 모든 이슈 (발신 + 수신)
+    // 내가 참여한 모든 이슈 (발신 + 수신)
     List<Issue> selectMyIssues(Long userNo);
 }

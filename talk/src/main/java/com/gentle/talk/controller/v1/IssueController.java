@@ -226,6 +226,12 @@ public class IssueController {
         log.info("## 중재안 선택 ##");
         log.info("no={}, selectedProposal={}", no, selectedProposal);
 
+        if (selectedProposal == null || selectedProposal.isBlank()) {
+            return ResponseEntity.badRequest().body("선택된 중재안 내용이 없습니다.");
+        }
+
+        selectedProposal = selectedProposal.replaceAll("^\"|\"$", "");
+        
         try {
             boolean result = issueService.selectMediationProposal(no, selectedProposal);
             if (result) {
