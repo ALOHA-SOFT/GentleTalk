@@ -23,11 +23,31 @@ import org.springframework.util.MultiValueMap;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import jakarta.annotation.PostConstruct;
+
 @Service
 public class SMSServiceImple implements SMSService {
-    @Value("${aligo.user_id}") String userId;
-    @Value("${aligo.api-key}") String apiKey;
-    @Value("${aligo.sender}") String sender;
+    @Value("${aligo.user_id:}") 
+    String userId;
+    
+    @Value("${aligo.api-key:}") 
+    String apiKey;
+    
+    @Value("${aligo.sender:}") 
+    String sender;
+
+    @PostConstruct
+    public void init() {
+        if (userId == null || userId.isEmpty()) {
+            throw new IllegalStateException("aligo.user_id 설정이 필요합니다. application.properties를 확인하세요.");
+        }
+        if (apiKey == null || apiKey.isEmpty()) {
+            throw new IllegalStateException("aligo.api-key 설정이 필요합니다. application.properties를 확인하세요.");
+        }
+        if (sender == null || sender.isEmpty()) {
+            throw new IllegalStateException("aligo.sender 설정이 필요합니다. application.properties를 확인하세요.");
+        }
+    }
 
     @Override
     public Map<String, Object> send(MultiValueMap<String, String> param) {
