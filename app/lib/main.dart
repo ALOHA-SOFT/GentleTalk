@@ -24,6 +24,12 @@ import 'features/negotiation/screens/mediation_sent_screen.dart';
 import 'features/negotiation/screens/opponent_response_screen.dart';
 import 'features/negotiation/screens/mediation_options_screen.dart';
 import 'features/negotiation/screens/mediation_send_screen.dart';
+import 'features/negotiation/screens/opponent_message_view_screen.dart';
+import 'features/negotiation/screens/opponent_opinion_submit_screen.dart';
+import 'features/negotiation/screens/opponent_final_proposal_screen.dart';
+import 'features/negotiation/screens/opponent_opinion_complete_screen.dart';
+import 'features/negotiation/screens/opponent_negotiation_success_screen.dart';
+import 'features/negotiation/screens/opponent_negotiation_failed_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,8 +59,7 @@ class MainApp extends StatelessWidget {
         '/terms': (context) => const TermsScreen(),
         '/home': (context) => const HomeScreen(),
         '/mypage': (context) => const MyPageScreen(),
-        '/negotiations-progress': (context) =>
-            const NegotiationsProgressScreen(),
+        '/negotiations-progress': (context) => const NegotiationsProgressScreen(),
         '/negotiations-history': (context) => const NegotiationsHistoryScreen(),
         '/find-negotiator': (context) => const FindNegotiatorScreen(),
         '/conflict-input': (context) => const ConflictInputScreen(),
@@ -69,6 +74,12 @@ class MainApp extends StatelessWidget {
         '/opponent-response': (context) => const OpponentResponseScreen(),
         '/mediation-options': (context) => const MediationOptionsScreen(),
         '/mediation-send': (context) => const MediationSendScreen(),
+        '/opponent-message-view': (context) => const OpponentMessageViewScreen(),
+        '/opponent-opinion-submit': (context) => const OpponentOpinionSubmitScreen(),
+        '/opponent-final-proposal': (context) => const OpponentFinalProposalScreen(),
+        '/opponent-opinion-complete': (context) => const OpponentOpinionCompleteScreen(),
+        '/opponent-negotiation-success': (context) => const OpponentNegotiationSuccessScreen(),
+        '/opponent-negotiation-failed': (context) => const OpponentNegotiationFailedScreen(),
       },
     );
   }
