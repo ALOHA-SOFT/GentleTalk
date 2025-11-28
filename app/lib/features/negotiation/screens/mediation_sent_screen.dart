@@ -91,7 +91,11 @@ class MediationSentScreen extends StatelessWidget {
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: () {
-                      Navigator.pop(context);
+                      Navigator.pushNamedAndRemoveUntil(
+                        context,
+                        '/home',        
+                        (route) => false,
+                      );
                     },
                     borderRadius: BorderRadius.circular(8),
                     child: const Center(

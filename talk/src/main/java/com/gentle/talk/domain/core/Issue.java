@@ -45,6 +45,8 @@ public class Issue extends Base {
   private String selectedMediationProposal; // 선택된 중재안 (JSON)
   
   private String status;                    // 상태 (대기, 분석중, 분석완료, 상대방 대기, 중재안제시, 협상완료)
+  private String negotiationMessage;        // 협상 메시지
+  private String flag;                      // 플래그 (Y/N)
   
   // 조인용 필드
   @TableField(exist = false)
@@ -53,6 +55,7 @@ public class Issue extends Base {
   @TableField(exist = false)
   private Users opponentUser;               // 상대방 회원 정보
 
-  private String negotiationMessage;        // 협상 메시지
+  @TableField(exist = false)
+  private String username;                  // 요청자 이름 (조인용)
   
 }

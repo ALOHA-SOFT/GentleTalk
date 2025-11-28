@@ -1,7 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
+import '../../../core/constants/config.dart';
 import '../../user/widgets/bottom_nav_bar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OpponentOpinionSubmitScreen extends StatefulWidget {
   const OpponentOpinionSubmitScreen({super.key});
@@ -15,10 +20,159 @@ class _OpponentOpinionSubmitScreenState
     extends State<OpponentOpinionSubmitScreen> {
   final TextEditingController _opinionController = TextEditingController();
 
+  String? _issueNo;
+  bool _initialized = false;
+  bool _isSubmitting = false;
+
+  // 🔥 추가된 상태
+  bool _alreadySubmitted = false;
+  String? _existingOpponentReq;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+    _issueNo = args?['issueNo']?.toString();
+
+    if (_issueNo != null) {
+      _fetchExistingOpinion();
+    }
+  }
+
   @override
   void dispose() {
     _opinionController.dispose();
     super.dispose();
+  }
+
+  /// 🔍 기존 의견 조회
+  Future<void> _fetchExistingOpinion() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      final uri = Uri.parse('${AppConfig.baseUrl}/api/v1/issues/$_issueNo');
+      debugPrint('📡 GET (existing opinion): $uri');
+
+      final res = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (res.statusCode == 200) {
+        final data = json.decode(utf8.decode(res.bodyBytes));
+        _existingOpponentReq = data['opponentRequirements'];
+
+        if (_existingOpponentReq != null &&
+            _existingOpponentReq!.trim().isNotEmpty) {
+          setState(() {
+            _alreadySubmitted = true;
+          });
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('이미 발송된 의견이 있습니다.')),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ 기존 의견 조회 오류: $e');
+    }
+  }
+
+  /// 제출하기
+  Future<void> _submitOpinion() async {
+    if (_alreadySubmitted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('이미 발송된 의견이 있습니다.')),
+      );
+      return;
+    }
+
+    final opinion = _opinionController.text.trim();
+
+    debugPrint('📝 submitOpinion called / issueNo=$_issueNo');
+
+    if (opinion.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('의견을 입력해주세요.')),
+      );
+      return;
+    }
+
+    if (_issueNo == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('이슈 번호가 없습니다. 다시 시도해주세요.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      final uri = Uri.parse(
+        '${AppConfig.baseUrl}/api/v1/issues/$_issueNo/opponent-requirements',
+      );
+      debugPrint('📡 PUT $uri');
+
+      final body = {
+        'opponentRequirements': opinion,
+      };
+
+      final res = await http.put(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      );
+
+      if (res.statusCode == 200) {
+        debugPrint('✅ 의견 저장 성공');
+
+        if (!mounted) return;
+        Navigator.pushNamed(
+          context,
+          '/opponent-opinion-complete',
+          arguments: {
+            'issueNo': _issueNo,
+          },
+        );
+      } else {
+        debugPrint('❌ 저장 실패: ${res.statusCode} / ${res.body}');
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('의견 제출에 실패했습니다. 다시 시도해주세요.')),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ 예외 발생: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('의견 제출 중 오류가 발생했습니다: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
   }
 
   @override
@@ -38,17 +192,15 @@ class _OpponentOpinionSubmitScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 타이틀
                       Center(
                         child: Text(
                           '의견 제출하기',
                           style: AppTextStyles.heading.copyWith(fontSize: 21),
-                          textAlign: TextAlign.center,
                         ),
                       ),
                       const SizedBox(height: 25),
 
-                      // 협상 절차 안내
+                      // 🔷 안내 메시지
                       Container(
                         width: double.infinity,
                         height: 60,
@@ -57,7 +209,7 @@ class _OpponentOpinionSubmitScreenState
                         ),
                         child: const Center(
                           child: Text(
-                            '협상 제안 요청에 대하여, \n요청자에게 의견을 제출해주세요.',
+                            '협상 제안 요청에 대하여,\n요청자에게 의견을 제출해주세요.',
                             style: TextStyle(
                               fontFamily: 'NanumSquare_ac',
                               fontSize: 16,
@@ -69,19 +221,18 @@ class _OpponentOpinionSubmitScreenState
                           ),
                         ),
                       ),
+
                       const SizedBox(height: 25),
 
-                      // 협상 메시지 (읽기 전용)
+                      // 🔷 의견 입력 박스
                       Container(
                         width: double.infinity,
                         height: 303,
                         decoration: BoxDecoration(
                           border: Border.all(color: AppColors.primary),
-                          borderRadius: BorderRadius.circular(0),
                         ),
                         child: Column(
                           children: [
-                            // 의견 레이블
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.symmetric(
@@ -104,29 +255,17 @@ class _OpponentOpinionSubmitScreenState
                               ),
                             ),
 
-                            // 의견 입력 필드
                             Expanded(
                               child: Container(
                                 padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: const Color(0xFF888888),
-                                  ),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
                                 child: TextField(
+                                  enabled: !_alreadySubmitted,
                                   controller: _opinionController,
                                   maxLines: null,
                                   expands: true,
                                   textAlignVertical: TextAlignVertical.top,
                                   decoration: const InputDecoration(
                                     hintText: '제 입장에서는 이런 부분이 추가적으로...',
-                                    hintStyle: TextStyle(
-                                      fontFamily: 'NanumSquare_ac',
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF00949F),
-                                    ),
                                     border: InputBorder.none,
                                   ),
                                   style: const TextStyle(
@@ -146,7 +285,7 @@ class _OpponentOpinionSubmitScreenState
               ),
             ),
 
-            // 하단 제출 버튼
+            // 🔽 제출 버튼
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
               child: Container(
@@ -155,36 +294,15 @@ class _OpponentOpinionSubmitScreenState
                 decoration: BoxDecoration(
                   gradient: AppColors.primaryGradient,
                   borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.25),
-                      offset: const Offset(0, 4),
-                      blurRadius: 4,
-                    ),
-                  ],
                 ),
                 child: TextButton(
-                  onPressed: () {
-                    // 의견 제출 로직
-                    if (_opinionController.text.isNotEmpty) {
-                      Navigator.pushNamed(
-                        context,
-                        '/opponent-opinion-complete',
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('의견을 입력해주세요.')),
-                      );
-                    }
-                  },
-                  style: TextButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    '제출하기',
-                    style: TextStyle(
+                  onPressed:
+                      (_isSubmitting || _alreadySubmitted) ? null : _submitOpinion,
+                  child: Text(
+                    _alreadySubmitted
+                        ? '이미 제출됨'
+                        : (_isSubmitting ? '제출 중...' : '제출하기'),
+                    style: const TextStyle(
                       fontFamily: 'NanumSquare_ac',
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -199,9 +317,7 @@ class _OpponentOpinionSubmitScreenState
       ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: 0,
-        onTap: (index) {
-          BottomNavBar.navigateToIndex(context, index);
-        },
+        onTap: (index) => BottomNavBar.navigateToIndex(context, index),
       ),
     );
   }

@@ -57,7 +57,19 @@ public class SMSController {
         log.info("receiver : " + param.get("receiver").toString());
         log.info("rdate : " + param.getFirst("rdate"));  
         log.info("rtime : " + param.getFirst("rtime"));  
-        log.info("testmode_yn : " + param.getFirst("testmode_yn"));  
+        log.info("testmode_yn : " + param.getFirst("testmode_yn"));
+        
+        // ✅ 이슈 번호 받기 (없으면 null)
+        String issueNoStr = param.getFirst("issueNo");
+        log.info("issueNo : " + issueNoStr);
+        Long issueNo = null;
+        if (issueNoStr != null && !issueNoStr.isEmpty()) {
+            try {
+                issueNo = Long.valueOf(issueNoStr);
+            } catch (NumberFormatException e) {
+                log.warn("잘못된 issueNo 값: {}", issueNoStr);
+            }
+        }
 
         // 문자 전송 요청
         Map<String, Object> resultMap = smsService.send(param);
@@ -71,46 +83,15 @@ public class SMSController {
             log.info("(전송 실패) : " + message);
             return message;
         }
-        // ⭕ 전송 성공
-        return resultMap.toString();
-    }
 
-    @PostMapping("/send/{issueNo}")
-    @ResponseBody
-    public String sendSMSByIssue(@PathVariable Long issueNo) {
-        log.info("## SMS 발송 요청 (issueNo) ## issueNo={}", issueNo);
-
-        Issue issue = issueService.selectByIssueNo(issueNo);
-        if (issue == null) {
-            return "존재하지 않는 이슈입니다.";
-        }
-
-        String msg = issue.getNegotiationMessage();
-        String receiver = issue.getOpponentContact();
-
-        if (msg == null || msg.isBlank()) {
-            return "협상 메시지가 없습니다.";
-        }
-        if (receiver == null || receiver.isBlank()) {
-            return "상대방 연락처가 없습니다.";
-        }
-
-        MultiValueMap<String, String> param = new LinkedMultiValueMap<>();
-        param.add("msg", msg);
-        param.add("receiver", receiver);
-        param.add("rdate", "");        // 필요 없으면 빈 값
-        param.add("rtime", "");
-        param.add("testmode_yn", "Y"); // 발송 모드 설정
-
-        Map<String, Object> resultMap = smsService.send(param);
-
-        Object resultCode = resultMap.get("result_code");
-        Integer result_code = Integer.valueOf(resultCode != null ? resultCode.toString() : "-1");
-        String message = (String) resultMap.get("message");
-
-        if (result_code == -101) {
-            log.info("(전송 실패) : " + message);
-            return message;
+        // ⭕ 전송 성공- 분석완료➡상대방대기
+        if (issueNo != null) {
+            try {
+                issueService.updateStatus(issueNo, "상대방대기");  // 👉 서비스 호출
+                log.info("Issue[{}] 상태를 '상대방대기'로 변경 완료", issueNo);
+            } catch (Exception e) {
+                log.error("Issue[{}] 상태 변경 중 오류", issueNo, e);
+            }
         }
 
         return resultMap.toString();

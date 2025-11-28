@@ -70,7 +70,7 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
     final finalMessage = rawMessage.replaceAll("[상대방 이름]", receiverName);
 
     // ✔️ 3) 문자 발송
-    final success = await sendSmsApi(phone, finalMessage);
+    final success = await sendSmsApi(_issueNo!, phone, finalMessage);
 
     if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -83,7 +83,7 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
     Navigator.pushNamed(context, '/request-complete');
   }
 
-    Future<bool> sendSmsApi(String phone, String message) async {
+    Future<bool> sendSmsApi(String issueNo, String phone, String message) async {
     final url = Uri.parse('${AppConfig.baseUrl}/api/v1/sms/send');
 
     final body = {
@@ -92,7 +92,7 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
       "rdate": "",
       "rtime": "",
       "testmode_yn": "Y", // 필요에 따라 N으로
-    };
+      "issueNo" : _issueNo ?? "" };
 
     try {
       final response = await http.post(
