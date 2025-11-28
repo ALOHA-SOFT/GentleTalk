@@ -330,16 +330,13 @@ public class IssueController {
             Issue issue = new Issue();
             issue.setNo(issueNo);                          
             issue.setSelectedMediationProposal(selectedProposal);   
-                   
-
-            boolean result = issueService.update(issue);
+                  
+            boolean result = issueService.updateSelectedMediationProposal(issueNo, selectedProposal);
 
             if (!result) {
                 return ResponseEntity.badRequest().body("중재안 업데이트 실패");
             }
 
-            issue.setStatus("중재안제시");
-            issue.setFlag("Y"); 
             return ResponseEntity.ok("중재안 업데이트 완료");
 
         } catch (Exception e) {

@@ -282,7 +282,7 @@ class _MediationOptionsScreenState extends State<MediationOptionsScreen> {
                 if (ok) {
                   Navigator.pushNamed(
                     context,
-                    '/mediation-send',
+                    '/mediation-sent',
                     arguments: {
                       'issueNo': _issueNo,
                       'selectedProposalText': selectedText,

@@ -88,6 +88,7 @@ public class SMSController {
         if (issueNo != null) {
             try {
                 issueService.updateStatus(issueNo, "상대방대기");  // 👉 서비스 호출
+                issueService.updateFlag(issueNo, "Y");
                 log.info("Issue[{}] 상태를 '상대방대기'로 변경 완료", issueNo);
             } catch (Exception e) {
                 log.error("Issue[{}] 상태 변경 중 오류", issueNo, e);

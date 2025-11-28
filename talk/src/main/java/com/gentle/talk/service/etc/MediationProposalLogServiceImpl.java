@@ -360,7 +360,6 @@ public class MediationProposalLogServiceImpl extends BaseServiceImpl<MediationPr
 
             // 5) issues 테이블에도 전체 JSON 배열 저장 + 상태 변경
             issue.setMediationProposals(proposalsJson);   // JSON 배열 ["...", "...", "...", "..."]
-            issue.setStatus("중재안제시");
             issueMapper.updateById(issue);
 
             return firstLog;

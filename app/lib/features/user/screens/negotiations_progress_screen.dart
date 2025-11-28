@@ -95,6 +95,7 @@ class _NegotiationsProgressScreenState
       setState(() => _isLoading = false);
     }
   }
+
   /// 상태별 진행 스텝 (총 6단계)
   int _statusStep(String status) {
     switch (status.trim()) {
@@ -102,23 +103,19 @@ class _NegotiationsProgressScreenState
         return 1;
       case '분석중':
         return 2;
-
       case '분석완료':
       case '분석실패':
         return 3;
-
       case '상대방대기':
         return 4;
       case '상대방응답':
         return 5;
       case '중재안제시':
         return 6;
-
       default:
         return 1;
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -167,8 +164,9 @@ class _NegotiationsProgressScreenState
                           final step = _statusStep(status);
                           final issueNo = item['no'];
 
-                          final UserNo = item['userNo'];          // 👈 작성자
-                          final opponentUserNo = item['opponentUserNo']; // 👈 상대방
+                          final userNo = item['userNo']; // 작성자
+                          final opponentUserNo =
+                              item['opponentUserNo']; // 상대방
 
                           return _buildNegotiationCard(
                             context,
@@ -178,7 +176,7 @@ class _NegotiationsProgressScreenState
                             '$step/6',
                             _statusColor(status),
                             issueNo,
-                            UserNo,
+                            userNo,
                             opponentUserNo,
                           );
                         },
@@ -210,7 +208,7 @@ class _NegotiationsProgressScreenState
       case '상대방대기':
         return const Color(0xFFFFB340); // 옐로우/오렌지
       case '상대방응답':
-        return const Color(0xFFD96E40); // ✅ 진한 오렌지
+        return const Color(0xFFD96E40); // 진한 오렌지
       default:
         return Colors.grey;
     }
@@ -231,8 +229,8 @@ class _NegotiationsProgressScreenState
     String progress,
     Color progressColor,
     dynamic issueNo,
-    dynamic UserNo,  
-    dynamic opponentUserNo,  
+    dynamic userNo,
+    dynamic opponentUserNo,
   ) {
     double progressPercent = 0.0;
     if (progress.contains('/')) {
@@ -258,8 +256,8 @@ class _NegotiationsProgressScreenState
         int? owner;
         int? opponent;
 
-        if (UserNo != null) {
-          owner = UserNo is int ? UserNo : int.tryParse(UserNo.toString());
+        if (userNo != null) {
+          owner = userNo is int ? userNo : int.tryParse(userNo.toString());
         }
         if (opponentUserNo != null) {
           opponent = opponentUserNo is int
@@ -269,7 +267,7 @@ class _NegotiationsProgressScreenState
 
         final trimmedStatus = status.trim();
 
-        // 1) 내가 작성자(user)인 경우 → 기존 상세 플로우 그대로
+        // 1) 내가 작성자(user)인 경우 → 기존 상세 플로우
         if (owner != null && currentUserNo == owner) {
           Navigator.pushNamed(
             context,
@@ -277,6 +275,7 @@ class _NegotiationsProgressScreenState
             arguments: {
               'status': status,
               'issueNo': issueNo,
+              'isOpponentView': false, // 작성자 입장
             },
           );
           return;
@@ -295,7 +294,7 @@ class _NegotiationsProgressScreenState
               },
             );
           } else if (trimmedStatus == '중재안제시') {
-            // 🔥 최종 중재안이 제시된 상태에서 상대방이 보는 화면
+            // 최종 중재안이 제시된 상태에서 상대방이 보는 화면
             Navigator.pushNamed(
               context,
               '/opponent-final-proposal',
@@ -305,13 +304,14 @@ class _NegotiationsProgressScreenState
               },
             );
           } else {
-            // 그 외 상태는 읽기/상세 공용 화면
+            // 그 외 상태는 읽기/상세 공용 화면 (상대방 입장 플래그 같이 전달)
             Navigator.pushNamed(
               context,
               '/negotiation-detail',
               arguments: {
                 'status': status,
                 'issueNo': issueNo,
+                'isOpponentView': true, // 상대방 입장
               },
             );
           }
@@ -389,7 +389,8 @@ class _NegotiationsProgressScreenState
                     ],
                   ),
                 ),
-                Icon(Icons.more_vert, size: 22, color: AppColors.textPrimary),
+                const Icon(Icons.more_vert,
+                    size: 22, color: AppColors.textPrimary),
               ],
             ),
             const SizedBox(height: 16),
