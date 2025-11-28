@@ -83,6 +83,42 @@ class _OpponentFinalProposalScreenState
     }
   }
 
+  /// 🔥 상태 변경 API 호출: PUT /api/v1/issues/{no}/status?status=...
+  Future<bool> _updateStatus(String newStatus) async {
+    if (_issueNo == null) return false;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      final uri = Uri.parse(
+        '${AppConfig.baseUrl}/api/v1/issues/$_issueNo/status'
+        '?status=${Uri.encodeQueryComponent(newStatus)}',
+      );
+
+      debugPrint('📡 PUT $uri (update status: $newStatus)');
+
+      final res = await http.put(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (res.statusCode == 200) {
+        debugPrint('✅ 상태 변경 성공: $newStatus');
+        return true;
+      } else {
+        debugPrint('❌ 상태 변경 실패: ${res.statusCode} ${res.body}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ 상태 변경 예외: $e');
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -136,7 +172,7 @@ class _OpponentFinalProposalScreenState
                       // 최종 협상안 박스
                       Container(
                         width: double.infinity,
-                        height: 303,
+                        height: 200,
                         decoration: BoxDecoration(
                           border: Border.all(color: AppColors.primary),
                         ),
@@ -201,8 +237,6 @@ class _OpponentFinalProposalScreenState
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
               child: Column(
                 children: [
-                  const SizedBox(height: 10),
-
                   Row(
                     children: [
                       // 승인 버튼
@@ -214,13 +248,36 @@ class _OpponentFinalProposalScreenState
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: TextButton(
-                            onPressed: () {
-                              Navigator.pushNamed(
-                                context,
-                                '/opponent-negotiation-success',
-                                arguments: {'issueNo': _issueNo},
-                              );
+                            onPressed: () async {
+                              if (_issueNo == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('이슈 번호가 없습니다. 다시 시도해주세요.'),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              final ok =
+                                  await _updateStatus('협상완료');
+
+                              if (ok) {
+                                Navigator.pushNamed(
+                                  context,
+                                  '/opponent-negotiation-success',
+                                  arguments: {'issueNo': _issueNo},
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('상태 변경에 실패했습니다. 다시 시도해주세요.'),
+                                  ),
+                                );
+                              }
                             },
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                            ),
                             child: const Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -255,23 +312,48 @@ class _OpponentFinalProposalScreenState
                             onPressed: () {
                               showDialog(
                                 context: context,
-                                builder: (context) => AlertDialog(
+                                builder: (dialogCtx) => AlertDialog(
                                   title: const Text('협상 거절'),
                                   content:
                                       const Text('협상을 거절하시겠습니까?'),
                                   actions: [
                                     TextButton(
-                                      onPressed: () => Navigator.pop(context),
+                                      onPressed: () =>
+                                          Navigator.pop(dialogCtx),
                                       child: const Text('취소'),
                                     ),
                                     TextButton(
-                                      onPressed: () {
-                                        Navigator.pop(context);
-                                        Navigator.pushNamed(
-                                          context,
-                                          '/opponent-negotiation-failed',
-                                          arguments: {'issueNo': _issueNo},
-                                        );
+                                      onPressed: () async {
+                                        Navigator.pop(dialogCtx);
+
+                                        if (_issueNo == null) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                  '이슈 번호가 없습니다. 다시 시도해주세요.'),
+                                            ),
+                                          );
+                                          return;
+                                        }
+
+                                        final ok = await _updateStatus('협상결렬');
+
+                                        if (ok) {
+                                          Navigator.pushNamed(
+                                            context,
+                                            '/opponent-negotiation-failed',
+                                            arguments: {'issueNo': _issueNo},
+                                          );
+                                        } else {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                  '상태 변경에 실패했습니다. 다시 시도해주세요.'),
+                                            ),
+                                          );
+                                        }
                                       },
                                       child: const Text('거절'),
                                     ),
@@ -279,6 +361,9 @@ class _OpponentFinalProposalScreenState
                                 ),
                               );
                             },
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                            ),
                             child: const Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [

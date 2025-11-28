@@ -60,4 +60,14 @@ public interface IssueService extends BaseService<Issue> {
 
     // 내가 참여한 모든 이슈 (발신 + 수신)
     List<Issue> selectMyIssues(Long userNo);
+
+    // 상대방 의견 추가
+    boolean updateOpponentRequirements(Long issueNo, String opponentRequirements);
+
+    // 선택된 중재안 저장
+    boolean updateSelectedMediationProposal(Long issueNo, String selectedMediationProposal);
+
+    // flag 상태 변경
+    boolean updateFlag(Long issueNo, String flag);
+
 }

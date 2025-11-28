@@ -193,7 +193,7 @@ class _NegotiationsHistoryScreenState extends State<NegotiationsHistoryScreen> {
           if (trimmedStatus == '협상완료') {
             routeName = '/opponent-negotiation-success';
           } else if (trimmedStatus == '협상결렬') {
-            routeName = '/opponent-negotiation-failed';
+            routeName = '/opponent-failed';
           } else {
             routeName = '/negotiation-result';
           }
