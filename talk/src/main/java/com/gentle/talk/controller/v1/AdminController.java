@@ -66,7 +66,7 @@ public class AdminController {
     @GetMapping("/users/{no}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Users> getUserDetail(
-            @Parameter(description = "사용자 번호", example = "1") @PathVariable Long no) {
+            @Parameter(description = "사용자 번호", example = "1") @PathVariable("no") Long no) {
         
         try {
             Users user = userService.select(no);
@@ -127,7 +127,7 @@ public class AdminController {
     @PutMapping("/users/{no}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> updateUser(
-            @Parameter(description = "사용자 번호", example = "1") @PathVariable Long no,
+            @Parameter(description = "사용자 번호", example = "1") @PathVariable("no") Long no,
             @RequestBody Users user) {
         
         try {
@@ -164,7 +164,7 @@ public class AdminController {
     @PutMapping("/users/{no}/status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> updateUserStatus(
-            @Parameter(description = "사용자 번호", example = "1") @PathVariable Long no,
+            @Parameter(description = "사용자 번호", example = "1") @PathVariable("no") Long no,
             @Parameter(description = "활성화 상태", example = "true") @RequestParam Boolean enabled) {
         
         try {
@@ -201,7 +201,7 @@ public class AdminController {
     @DeleteMapping("/users/{no}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> deleteUser(
-            @Parameter(description = "사용자 번호", example = "1") @PathVariable Long no) {
+            @Parameter(description = "사용자 번호", example = "1") @PathVariable("no") Long no) {
         
         try {
             Users existingUser = userService.select(no);
@@ -235,7 +235,7 @@ public class AdminController {
     @PutMapping("/users/{no}/reset-password")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> adminResetPassword(
-            @Parameter(description = "사용자 번호", example = "1") @PathVariable Long no,
+            @Parameter(description = "사용자 번호", example = "1") @PathVariable("no") Long no,
             @RequestBody Users passwordData) {
         
         try {

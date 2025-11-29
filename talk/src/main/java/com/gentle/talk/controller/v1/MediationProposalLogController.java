@@ -40,7 +40,7 @@ public class MediationProposalLogController {
 
     @GetMapping("/{no}")
     @Operation(summary = "중재안 로그 조회", description = "로그 번호로 중재안 로그를 조회합니다")
-    public ResponseEntity<?> getLog(@PathVariable Long no) {
+    public ResponseEntity<?> getLog(@PathVariable("no") Long no) {
         log.info("## 중재안 로그 조회 ##");
         log.info("no={}", no);
 
@@ -150,7 +150,7 @@ public class MediationProposalLogController {
 
     @PutMapping("/{no}/reuse")
     @Operation(summary = "재사용 횟수 증가", description = "중재안 로그의 재사용 횟수를 증가시킵니다")
-    public ResponseEntity<?> incrementReuseCount(@PathVariable Long no) {
+    public ResponseEntity<?> incrementReuseCount(@PathVariable("no") Long no) {
         log.info("## 재사용 횟수 증가 ##");
         log.info("no={}", no);
 
@@ -169,7 +169,7 @@ public class MediationProposalLogController {
 
     @PutMapping("/{no}")
     @Operation(summary = "중재안 로그 수정", description = "중재안 로그 정보를 수정합니다")
-    public ResponseEntity<?> updateLog(@PathVariable Long no, @RequestBody MediationProposalLog mediationLog) {
+    public ResponseEntity<?> updateLog(@PathVariable("no") Long no, @RequestBody MediationProposalLog mediationLog) {
         log.info("## 중재안 로그 수정 ##");
         log.info("no={}, log={}", no, mediationLog);
 
@@ -189,7 +189,7 @@ public class MediationProposalLogController {
 
     @DeleteMapping("/{no}")
     @Operation(summary = "중재안 로그 삭제", description = "중재안 로그를 삭제합니다")
-    public ResponseEntity<?> deleteLog(@PathVariable Long no) {
+    public ResponseEntity<?> deleteLog(@PathVariable("no") Long no) {
         log.info("## 중재안 로그 삭제 ##");
         log.info("no={}", no);
 
@@ -229,7 +229,7 @@ public class MediationProposalLogController {
     }
 
     @PostMapping("/generate/{no}")
-    public ResponseEntity<?> generateMediationProposals(@PathVariable Long no, @RequestParam(required = false) Long categoryNo) {
+    public ResponseEntity<?> generateMediationProposals(@PathVariable("no") Long no, @RequestParam(required = false, name = "categoryNo") Long categoryNo) {
         log.info("## AI - 중재안 생성 요청 ##");
         log.info("no={}, categoryNo={}", no, categoryNo);
 

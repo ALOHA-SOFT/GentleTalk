@@ -20,6 +20,7 @@
         <result property="opponentAnalysisResult" column="opponent_analysis_result"/>
         <result property="mediationProposals" column="mediation_proposals"/>
         <result property="selectedMediationProposal" column="selected_mediation_proposal"/>
+        <result property="additionalConditions" column="additional_conditions"/>
         <result property="status" column="status"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
@@ -132,12 +133,15 @@
         AND (opponent_user_no IS NULL OR opponent_user_no = 0)
     </select>
 
-    <!-- 최종 중재안 정보 저장 -->
+    <!-- 최종 중재안 및 추가조건 정보 저장 -->
     <update id="updateRequestedMediationProposals">
         UPDATE issues
         SET     
         <if test="selectedMediationProposal != null and selectedMediationProposal != ''">
         selected_mediation_proposal = #{selectedMediationProposal},
+        </if>
+        <if test="additionalConditions != null and additionalConditions != ''">
+        additional_conditions = #{additionalConditions},
         </if>
             status = #{status},
             updated_at = NOW()

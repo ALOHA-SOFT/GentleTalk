@@ -223,8 +223,8 @@ class _MediationOptionsScreenState extends State<MediationOptionsScreen> {
                   // 버튼들
                   _buildSelectButton(proposals),
                   const SizedBox(height: 10),
-                  _buildAdditionalConditionButton(proposals),
-                  const SizedBox(height: 10),
+                  // _buildAdditionalConditionButton(proposals),
+                  // const SizedBox(height: 10),
                   _buildNegotiatorButton(),
                   const SizedBox(height: 20),
                 ],
@@ -338,7 +338,7 @@ class _MediationOptionsScreenState extends State<MediationOptionsScreen> {
         color: Colors.transparent,
         child: InkWell(
           onTap: isEnabled
-              ? () {
+              ? () async {
                   final index = (selectedOption! - 1);
                   if (index < 0 || index >= proposals.length) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -349,6 +349,19 @@ class _MediationOptionsScreenState extends State<MediationOptionsScreen> {
 
                   final selectedText = proposals[index];
 
+                  // 🔥 추가 조건 입력 전에도 선택된 중재안을 서버에 저장
+                  final ok = await _saveSelectedProposal(_issueNo!, selectedText);
+
+                  if (!ok) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('중재안 저장에 실패했습니다. 다시 시도해주세요.'),
+                      ),
+                    );
+                    return;
+                  }
+
+                  // 저장 성공 후 화면 이동
                   Navigator.pushNamed(
                     context,
                     '/mediation-send',

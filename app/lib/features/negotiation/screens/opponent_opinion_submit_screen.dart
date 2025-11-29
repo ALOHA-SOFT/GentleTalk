@@ -265,7 +265,7 @@ class _OpponentOpinionSubmitScreenState
                                   expands: true,
                                   textAlignVertical: TextAlignVertical.top,
                                   decoration: const InputDecoration(
-                                    hintText: '제 입장에서는 이런 부분이 추가적으로...',
+                                    hintText: '의견을 작성해주세요.',
                                     border: InputBorder.none,
                                   ),
                                   style: const TextStyle(

@@ -70,16 +70,26 @@ class _OpponentNegotiationSuccessScreenState
       final data =
           json.decode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
 
-      final raw = data['selectedMediationProposal'];
+      final selectedProposal = data['selectedMediationProposal'];
+      final analysisResult = data['analysisResult'];
 
       String text;
-      if (raw == null) {
-        text = '선택된 최종 협상안이 없습니다.';
-      } else if (raw is String) {
-        text = raw;
+      if (selectedProposal != null) {
+        // selectedMediationProposal이 있으면 우선 사용
+        if (selectedProposal is String) {
+          text = selectedProposal;
+        } else {
+          text = const JsonEncoder.withIndent('  ').convert(selectedProposal);
+        }
+      } else if (analysisResult != null) {
+        // selectedMediationProposal이 없으면 analysisResult 사용
+        if (analysisResult is String) {
+          text = analysisResult;
+        } else {
+          text = const JsonEncoder.withIndent('  ').convert(analysisResult);
+        }
       } else {
-        // Map / List 인 경우 보기 좋게 JSON 문자열로 변환
-        text = const JsonEncoder.withIndent('  ').convert(raw);
+        text = '협상안 정보가 없습니다.';
       }
 
       setState(() {
