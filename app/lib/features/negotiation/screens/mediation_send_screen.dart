@@ -26,6 +26,9 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
   /// issues.selectedMediationProposal 값 (최종 협상안)
   String _selectedProposalText = '';
 
+  /// 🔥 DB flag (mediationSentYn) 값
+  bool _alreadySent = false;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -50,7 +53,7 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
     super.dispose();
   }
 
-  /// issues/{issueNo} 조회해서 selectedMediationProposal 가져오기
+  /// issues/{issueNo} 조회해서 selectedMediationProposal + mediationSentYn 가져오기
   Future<void> _loadIssueDetail() async {
     if (_issueNo == null) {
       setState(() {
@@ -85,6 +88,7 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
 
       // 🔥 issues 테이블의 selectedMediationProposal 사용
       final raw = data['selectedMediationProposal'];
+      
 
       String text;
       if (raw == null) {
@@ -97,8 +101,25 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
         text = const JsonEncoder.withIndent('  ').convert(raw);
       }
 
+      // 🔥 DB flag(mediationSentYn) 읽어서 이미 발송 여부 반영
+      final mediationSentYnRaw = data['flag'];
+
+      // null 방어 + 공백 제거
+      String yn = (mediationSentYnRaw ?? '').toString().trim();
+
+      // 전각(풀와이드) 문자 -> 반각으로 변환
+      yn = yn
+          .replaceAll('Ｙ', 'Y')
+          .replaceAll('Ｎ', 'N');
+
+      // 최종 비교
+      final alreadySent = yn.toUpperCase() == 'Y';
+
+      debugPrint('flag(mediationSentYn): $yn, alreadySent: $alreadySent');
+
       setState(() {
         _selectedProposalText = text;
+        _alreadySent = alreadySent;
         _isLoading = false;
         _errorMessage = null;
       });
@@ -111,7 +132,7 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
     }
   }
 
-  /// 중재안 발송 API (예시) – 실제 엔드포인트에 맞게 수정해서 사용
+  /// 중재안 발송 API
   Future<bool> _sendMediation() async {
     if (_issueNo == null) return false;
 
@@ -121,7 +142,7 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
 
       final uri = Uri.parse(
           '${AppConfig.baseUrl}/api/v1/issues/$_issueNo/send-mediation');
-      debugPrint('📡 POST $uri (send mediation)');
+      debugPrint('📡 PUT $uri (send mediation)');
 
       final body = {
         'additionalConditions': _hasAdditionalConditions
@@ -129,7 +150,7 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
             : null,
       };
 
-      final res = await http.post(
+      final res = await http.put(
         uri,
         headers: {
           'Content-Type': 'application/json',
@@ -154,9 +175,10 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
   @override
   Widget build(BuildContext context) {
     final args =
-      ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
 
-    final issueNo = args?['issueNo'];
+    // 필요하면 issueNo 사용
+    // final issueNo = args?['issueNo'];
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -256,7 +278,7 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
                       constraints: const BoxConstraints(
                         minHeight: 200, // 최솟높이
                       ),
-                      alignment: Alignment.topLeft, // 🔥 텍스트를 위+왼쪽 정렬
+                      alignment: Alignment.topLeft, // 텍스트를 위+왼쪽 정렬
                       child: Text(
                         _selectedProposalText.isNotEmpty
                             ? _selectedProposalText
@@ -332,96 +354,141 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
               ),
               const SizedBox(height: 25),
 
-              // 발송하기 버튼
-              Container(
-                width: double.infinity,
-                height: 40,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF00ADB5), Color(0xFF00576A)],
+              // 🔥 발송 여부에 따른 버튼 분기
+              if (_alreadySent) ...[
+                // 이미 발송된 상태
+                Container(
+                  width: double.infinity,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE0E0E0),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 3,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.25),
-                      blurRadius: 4,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () async {
-                      final ok = await _sendMediation();
-                      if (ok) {
-                        Navigator.pushNamed(context, '/mediation-sent');
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('중재안 발송에 실패했습니다. 다시 시도해주세요.'),
-                          ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        // 👉 목록 화면으로 이동 (route 이름은 실제 사용하는 걸로 맞춰줘)
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          '/negotiations-progress', // TODO: 필요 시 route 이름 변경
+                          (route) => false,
                         );
-                      }
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: const Center(
-                      child: Text(
-                        '최종협상 진행',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: const Center(
+                        child: Text(
+                          '이미 발송이 완료되었습니다.',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 10),
+              ] else ...[
+                // 발송 전: 기존 버튼들
+                // 발송하기 버튼
+                Container(
+                  width: double.infinity,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF00ADB5), Color(0xFF00576A)],
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.25),
+                        blurRadius: 4,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () async {
+                        final ok = await _sendMediation();
+                        if (ok) {
+                          Navigator.pushNamed(context, '/mediation-sent');
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('중재안 발송에 실패했습니다. 다시 시도해주세요.'),
+                            ),
+                          );
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: const Center(
+                        child: Text(
+                          '최종협상 진행',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
 
-              // 다시 선택 버튼
-              Container(
-                width: double.infinity,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: const Color(0xFF282B35)),
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.25),
-                      blurRadius: 4,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.pushNamed(
-                        context,
-                        '/mediation-options',
-                        arguments: {
-                          'issueNo': args?['issueNo'],
-                        },
-                      );
-                    },
+                // 다시 선택 버튼
+                Container(
+                  width: double.infinity,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: const Color(0xFF282B35)),
                     borderRadius: BorderRadius.circular(8),
-                    child: const Center(
-                      child: Text(
-                        '다시 선택',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.25),
+                        blurRadius: 4,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.pushNamed(
+                          context,
+                          '/mediation-options',
+                          arguments: {
+                            'issueNo': args?['issueNo'],
+                          },
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: const Center(
+                        child: Text(
+                          '다시 선택',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
+              ],
               const SizedBox(height: 20),
             ],
           ),

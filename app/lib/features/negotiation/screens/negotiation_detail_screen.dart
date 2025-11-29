@@ -18,6 +18,7 @@ class NegotiationDetailScreen extends StatefulWidget {
 class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
   String? _issueNo; // String 기반으로 유지
   String _initialStatus = '대기';
+  bool _isOpponentView = false; // 👈 추가: 상대방 입장 여부
   Future<Map<String, dynamic>>? _detailFuture;
 
   @override
@@ -30,9 +31,10 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
     if (_issueNo == null && args != null) {
       _initialStatus = (args['status'] ?? '대기').toString();
       _issueNo = args['issueNo']?.toString();
+      _isOpponentView = args['isOpponentView'] == true; // 👈 추가: 플래그 세팅
 
       debugPrint(
-          'NegotiationDetail => issueNo=$_issueNo, status=$_initialStatus');
+          'NegotiationDetail => issueNo=$_issueNo, status=$_initialStatus, isOpponentView=$_isOpponentView');
 
       if (_issueNo != null) {
         _detailFuture = _fetchIssueDetail(_issueNo!);
@@ -125,7 +127,7 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
                 (data['negotiationMessage'] ?? negotiationMessage).toString();
             selectedMediationProposal =
                 (data['selectedMediationProposal'] ?? selectedMediationProposal)
-                    .toString();    
+                    .toString();
           }
 
           final Color statusColor = _getStatusColor(status);
@@ -149,10 +151,9 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
                           ? negotiationMessage
                           : '분석내용에 맞춘 협상 메시지 입니다.');
 
-          final String opponentMsgText =
-              opponentRequirements.isNotEmpty
-                  ? opponentRequirements
-                  : '상대방의 응답 메시지가 아직 등록되지 않았습니다.';
+          final String opponentMsgText = opponentRequirements.isNotEmpty
+              ? opponentRequirements
+              : '상대방의 응답 메시지가 아직 등록되지 않았습니다.';
 
           final String mediationText = mediationProposal.isNotEmpty
               ? mediationProposal
@@ -234,7 +235,7 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
 
                         const SizedBox(height: 25),
 
-                        // ✅ 상대방응답 상태일 때: 응답 메시지 섹션 (탭 시 상세 화면 이동 같은 것 넣을 수 있음)
+                        // ✅ 상대방응답 상태일 때: 응답 메시지 섹션
                         if (status == '상대방응답') ...[
                           GestureDetector(
                             onTap: () {
@@ -258,7 +259,7 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
                           const SizedBox(height: 10),
                         ],
 
-                        // ✅ 중재안제시 상태일 때: 최종 협상안(탭하면 중재안 발송 화면) + 상대방 응답 메시지
+                        // ✅ 중재안제시 상태일 때: 최종 협상안 + 상대방 응답 메시지
                         if (status == '중재안제시') ...[
                           GestureDetector(
                             onTap: () {
@@ -267,13 +268,13 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
                                 '/mediation-send',
                                 arguments: {
                                   'issueNo': _issueNo,
-                                  'isFinalNegotiation': true, // 🔥 발송 모드
+                                  'isFinalNegotiation': true, // 발송 모드
                                 },
                               );
                             },
                             child: _InfoSection(
                               title: '최종 협상안',
-                              content: finalMediationText, // 🔥 여기만 변경
+                              content: finalMediationText,
                               titleColor: const Color(0xFFB452FF),
                               borderColor: const Color(0xFFB452FF),
                             ),
@@ -288,6 +289,7 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
                           ),
                           const SizedBox(height: 10),
                         ],
+
                         _InfoSection(
                           title: '갈등 상황',
                           content: conflictSituation,
@@ -329,8 +331,8 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
                 ),
               ),
 
-              // ✅ 하단 버튼 영역
-              _buildBottomButtons(context, status),
+              // ✅ 하단 버튼 영역 (상대방 응답 + 상대방 입장일 때 숨김)
+              _buildBottomButtons(context, status, _isOpponentView),
             ],
           );
         },
@@ -341,7 +343,8 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
   // =======================
   // ⭐ 하단 버튼 영역
   // =======================
-  Widget _buildBottomButtons(BuildContext context, String status) {
+  Widget _buildBottomButtons(
+      BuildContext context, String status, bool isOpponentView) {
     Widget buildTwoButtons(Widget topBtn, Widget bottomBtn) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
@@ -354,6 +357,11 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
           ],
         ),
       );
+    }
+
+    // 👇 핵심 로직: 상대방 입장 + 상대방응답이면 버튼 숨김
+    if (isOpponentView && status == '상대방응답') {
+      return const SizedBox.shrink();
     }
 
     if (status == '대기') {
@@ -409,7 +417,7 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
       );
     }
 
-    // ✅ 상대방응답일 때: 중재안 분석 요청 + 삭제
+    // ✅ 작성자 입장에서만 보이는 '상대방응답' 버튼들
     if (status == '상대방응답') {
       return buildTwoButtons(
         _SpecialButton(
@@ -430,7 +438,7 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
                 '/mediation-options',
                 arguments: {
                   'issueNo': _issueNo,
-                  'isFinalNegotiation': false, // 🔥 분석 후, 발송 전 단계
+                  'isFinalNegotiation': false, // 분석 후, 발송 전 단계
                 },
               );
             } else {
@@ -462,53 +470,52 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
   }
 
   Widget _buildDeleteButton(BuildContext context) {
-  return _OutlineButton(
-    text: '삭제하기',
-    onPressed: () async {
-      if (_issueNo == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('이슈 번호가 없습니다. 다시 시도해주세요.')),
+    return _OutlineButton(
+      text: '삭제하기',
+      onPressed: () async {
+        if (_issueNo == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('이슈 번호가 없습니다. 다시 시도해주세요.')),
+          );
+          return;
+        }
+
+        // 확인 다이얼로그
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('이슈 삭제'),
+            content: const Text('정말로 이 협상 이슈를 삭제하시겠습니까?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('삭제'),
+              ),
+            ],
+          ),
         );
-        return;
-      }
 
-      // 확인 다이얼로그
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('이슈 삭제'),
-          content: const Text('정말로 이 협상 이슈를 삭제하시겠습니까?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('취소'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('삭제'),
-            ),
-          ],
-        ),
-      );
+        if (confirmed != true) return;
 
-      if (confirmed != true) return;
+        final ok = await _deleteIssue(_issueNo!);
 
-      final ok = await _deleteIssue(_issueNo!);
-
-      if (ok) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('이슈가 삭제되었습니다.')),
-        );
-        // 목록 화면으로 돌아가면서 "변경됨" 표시
-        Navigator.pop(context, true);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('삭제에 실패했습니다. 다시 시도해주세요.')),
-        );
-      }
-    },
-  );
-}
+        if (ok) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('이슈가 삭제되었습니다.')),
+          );
+          Navigator.pop(context, true);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('삭제에 실패했습니다. 다시 시도해주세요.')),
+          );
+        }
+      },
+    );
+  }
 
   // =======================
   // 🍀 중재안 생성 API 요청
@@ -542,7 +549,6 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
       return false;
     }
   }
-}
 
   // =======================
   // 🧹 이슈 삭제 API
@@ -565,13 +571,13 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
 
       debugPrint('✅ 삭제 API 응답: ${res.statusCode} ${res.body}');
 
-      // 백엔드에서 200 또는 204 정도를 성공으로 본다고 가정
       return res.statusCode == 200 || res.statusCode == 204;
     } catch (e) {
       debugPrint('❌ 삭제 API 호출 중 오류: $e');
       return false;
     }
   }
+}
 
 // =======================
 // 공통 섹션 위젯

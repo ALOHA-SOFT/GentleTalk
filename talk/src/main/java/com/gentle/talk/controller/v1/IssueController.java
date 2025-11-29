@@ -1,6 +1,7 @@
 package com.gentle.talk.controller.v1;
 
 import com.gentle.talk.domain.core.Issue;
+import com.gentle.talk.domain.users.CustomUser;
 import com.gentle.talk.domain.users.Users;
 import com.gentle.talk.service.core.IssueService;
 import com.gentle.talk.service.users.UserService;
@@ -12,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.security.core.Authentication;
+import org.springframework.boot.autoconfigure.security.SecurityProperties.User;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -73,6 +75,13 @@ public class IssueController {
         try {
             Issue issue = issueService.selectByIssueNo(no);
             if (issue != null) {
+
+            Long userNo = issue.getUserNo();
+            Users requester = userService.select(userNo);
+            String requesterName = requester != null ? requester.getUsername() : "Unknown";
+            log.info("flag={}", issue.getFlag());
+            issue.setUsername(requesterName);
+
                 return ResponseEntity.ok(issue);
             } else {
                 return ResponseEntity.notFound().build();
@@ -101,21 +110,6 @@ public class IssueController {
             return ResponseEntity.internalServerError().body("서버 오류: " + e.getMessage());
         }
     }
-
-    // @GetMapping("/user/{userNo}")
-    // @Operation(summary = "회원의 이슈 목록", description = "회원이 등록한 이슈 목록을 조회합니다")
-    // public ResponseEntity<?> getIssuesByUserNo(@PathVariable Long userNo) {
-    //     log.info("## 회원의 이슈 목록 조회 ##");
-    //     log.info("userNo={}", userNo);
-
-    //     try {
-    //         List<Issue> issues = issueService.selectByUserNo(userNo);
-    //         return ResponseEntity.ok(issues);
-    //     } catch (Exception e) {
-    //         log.error("회원 이슈 목록 조회 중 오류 발생", e);
-    //         return ResponseEntity.internalServerError().body("서버 오류: " + e.getMessage());
-    //     }
-    // }
 
     @GetMapping
     @Operation(summary = "이슈 목록 조회", description = "페이징된 이슈 목록을 조회합니다")
@@ -230,7 +224,7 @@ public class IssueController {
             return ResponseEntity.badRequest().body("선택된 중재안 내용이 없습니다.");
         }
 
-        selectedProposal = selectedProposal.replaceAll("^\"|\"$", "");
+        // selectedProposal = selectedProposal.replaceAll("^\"|\"$", "");
         
         try {
             boolean result = issueService.selectMediationProposal(no, selectedProposal);
@@ -318,6 +312,66 @@ public class IssueController {
             return ResponseEntity.ok(issues);
         } catch (Exception e) {
             log.error("회원 이슈 목록 조회 중 오류 발생", e);
+            return ResponseEntity.internalServerError().body("서버 오류: " + e.getMessage());
+        }
+    }
+
+    /**
+    * 중재안 확정 + 상태 '중재안 제시' 로 변경
+    */
+    @PutMapping("/{issueNo}/send-mediation")
+    public ResponseEntity<?> updateMediation(@PathVariable Long issueNo, @RequestBody Map<String, String> body){
+        log.info("## 중재안 업데이트 요청 ##");
+        log.info("issueNo={}, body={}", issueNo, body);
+
+        try {
+            String selectedProposal = body.get("selectedMediationProposal");
+
+            Issue issue = new Issue();
+            issue.setNo(issueNo);                          
+            issue.setSelectedMediationProposal(selectedProposal);   
+                  
+            boolean result = issueService.updateSelectedMediationProposal(issueNo, selectedProposal);
+
+            if (!result) {
+                return ResponseEntity.badRequest().body("중재안 업데이트 실패");
+            }
+
+            return ResponseEntity.ok("중재안 업데이트 완료");
+
+        } catch (Exception e) {
+            log.error("중재안 업데이트 중 오류 발생", e);
+            return ResponseEntity.internalServerError()
+                    .body("서버 오류: " + e.getMessage());
+        }
+    }
+
+    @PutMapping("/{no}/opponent-requirements")
+    @Operation(summary = "상대방 의견 추가", description = "상대방 의견(opponent_requirements)만 업데이트합니다.")
+    public ResponseEntity<?> updateOpponentRequirements(
+            @PathVariable Long no,
+            @RequestBody Map<String, String> requestBody) {
+
+            log.info("## 상대방 의견 추가 ##");
+            log.info("no={}, body={}", no, requestBody);
+
+            try {
+            String opponentRequirements = requestBody.get("opponentRequirements");
+
+            if (opponentRequirements == null || opponentRequirements.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("opponentRequirements 값이 비어있습니다.");
+            }
+  
+            boolean updated = issueService.updateOpponentRequirements(no, opponentRequirements);
+
+            if (!updated) {
+                return ResponseEntity.badRequest().body("상대방 의견/상태 저장 실패");
+            }
+
+            return ResponseEntity.ok("상대방 의견 및 상태 변경 완료");
+
+        } catch (Exception e) {
+            log.error("상대방 의견 저장 중 오류 발생", e);
             return ResponseEntity.internalServerError().body("서버 오류: " + e.getMessage());
         }
     }

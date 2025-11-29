@@ -132,4 +132,25 @@
         AND (opponent_user_no IS NULL OR opponent_user_no = 0)
     </select>
 
+    <!-- 최종 중재안 정보 저장 -->
+    <update id="updateRequestedMediationProposals">
+        UPDATE issues
+        SET     
+        <if test="selectedMediationProposal != null and selectedMediationProposal != ''">
+        selected_mediation_proposal = #{selectedMediationProposal},
+        </if>
+            status = #{status},
+            updated_at = NOW()
+        WHERE no = #{no}
+    </update>
+
+    <!-- 상대방 요구사항 저장 -->
+    <update id="updateOpponentRequirements">
+        UPDATE issues
+        SET opponent_requirements = #{opponentRequirements},
+            status = #{status},
+            updated_at = NOW()
+        WHERE no = #{no}
+    </update>
+
 </mapper>

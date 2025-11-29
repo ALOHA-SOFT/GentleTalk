@@ -504,4 +504,54 @@ public class IssueServiceImpl extends BaseServiceImpl<Issue, IssueMapper> implem
         return new java.util.ArrayList<>(merged.values());
     }
 
+    @Override
+    public boolean updateOpponentRequirements(Long issueNo, String opponentRequirements) {
+        log.info("## 상대방 의견 추가 ##");
+        try {
+            int updated = mapper.updateOpponentRequirements(issueNo, opponentRequirements, "상대방응답");
+            return updated > 0;   // 업데이트 성공 여부 반환
+        } catch (Exception e) {
+            log.error("상대방 의견 업데이트 중 오류 발생", e);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean updateSelectedMediationProposal(Long issueNo, String selectedMediationProposal) {
+        log.info("## 선택된 중재안 저장 ##");
+        try {
+            int updated = mapper.updateRequestedMediationProposals(issueNo, selectedMediationProposal, "중재안제시");
+            return updated > 0;   // 업데이트 성공 여부 반환
+        } catch (Exception e) {
+            log.error("상대방 의견 업데이트 중 오류 발생", e);
+            return false;
+        } 
+    }
+
+    @Transactional
+    @Override
+    public boolean updateFlag(Long issueNo, String flag) {
+        log.info("## flag 상태 변경 ##");
+        log.info("issueNo={}, flag={}", issueNo, flag);
+        
+        try {
+            Issue issue = mapper.selectById(issueNo);
+            if (issue == null) {
+                log.error("이슈를 찾을 수 없습니다. issueNo={}", issueNo);
+                return false;
+            }
+            
+            issue.setFlag(flag);
+            
+            int result = mapper.updateById(issue);
+            log.info("flag 상태 변경 결과 - result: {}", result);
+            
+            return result > 0;
+        } catch (Exception e) {
+            log.error("flag 상태 변경 중 오류 발생", e);
+            return false;
+        }
+    }
+
+    
 }
