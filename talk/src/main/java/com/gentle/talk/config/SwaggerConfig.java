@@ -9,6 +9,9 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.servers.Server;
+
+import java.util.Arrays;
 
 
 @Configuration
@@ -47,6 +50,15 @@ public class SwaggerConfig {
                         .description("JWT 토큰을 입력하세요 (Bearer 제외)")
                 );
         
+        // 서버 URL 설정
+        Server localServer = new Server()
+                .url("http://localhost:8090")
+                .description("로컬 서버");
+        
+        Server productionServer = new Server()
+                .url("https://gentletalk.kr")
+                .description("프로덕션 서버");
+        
         return new OpenAPI()
                 .info(new Info()
                         .title("GentleTalk API")
@@ -57,6 +69,7 @@ public class SwaggerConfig {
                                 "3. 발급받은 accessToken 값을 입력 (Bearer 제외)\n" +
                                 "4. 인증이 필요한 API 테스트")
                         .version("v0.0.1"))
+                .servers(Arrays.asList(localServer, productionServer))
                 .components(components)
                 .addSecurityItem(securityRequirement);
     }

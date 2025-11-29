@@ -41,7 +41,7 @@ public class IssueCategoryController {
 
     @GetMapping("/{no}")
     @Operation(summary = "카테고리 조회", description = "카테고리 번호로 카테고리를 조회합니다")
-    public ResponseEntity<?> getCategory(@PathVariable Long no) {
+    public ResponseEntity<?> getCategory(@PathVariable("no") Long no) {
         log.info("## 카테고리 조회 ##");
         log.info("no={}", no);
 
@@ -107,7 +107,7 @@ public class IssueCategoryController {
 
     @PutMapping("/{no}")
     @Operation(summary = "카테고리 수정", description = "카테고리 정보를 수정합니다")
-    public ResponseEntity<?> updateCategory(@PathVariable Long no, @RequestBody IssueCategory category) {
+    public ResponseEntity<?> updateCategory(@PathVariable("no") Long no, @RequestBody IssueCategory category) {
         log.info("## 카테고리 수정 ##");
         log.info("no={}, category={}", no, category);
 
@@ -127,7 +127,7 @@ public class IssueCategoryController {
 
     @DeleteMapping("/{no}")
     @Operation(summary = "카테고리 삭제", description = "카테고리를 삭제합니다")
-    public ResponseEntity<?> deleteCategory(@PathVariable Long no) {
+    public ResponseEntity<?> deleteCategory(@PathVariable("no") Long no) {
         log.info("## 카테고리 삭제 ##");
         log.info("no={}", no);
 

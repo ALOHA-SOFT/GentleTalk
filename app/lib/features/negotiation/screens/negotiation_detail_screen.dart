@@ -19,6 +19,7 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
   String? _issueNo; // String 기반으로 유지
   String _initialStatus = '대기';
   bool _isOpponentView = false; // 👈 추가: 상대방 입장 여부
+  bool _isRequestingMediation = false; // 👈 추가: 중재안 분석 요청 중 여부
   Future<Map<String, dynamic>>? _detailFuture;
 
   @override
@@ -421,8 +422,9 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
     if (status == '상대방응답') {
       return buildTwoButtons(
         _SpecialButton(
-          text: '✨ 중재안 분석 요청하기',
-          onPressed: () async {
+          text: _isRequestingMediation ? '✨ AI 중재안 분석 요청중' : '✨ 중재안 분석 요청하기',
+          isLoading: _isRequestingMediation,
+          onPressed: _isRequestingMediation ? () {} : () async {
             if (_issueNo == null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('이슈 번호가 없습니다. 다시 시도해주세요.')),
@@ -430,7 +432,15 @@ class _NegotiationDetailScreenState extends State<NegotiationDetailScreen> {
               return;
             }
 
+            setState(() {
+              _isRequestingMediation = true;
+            });
+
             final success = await _requestMediationAnalysis(_issueNo!);
+
+            setState(() {
+              _isRequestingMediation = false;
+            });
 
             if (success) {
               Navigator.pushNamed(
@@ -703,8 +713,13 @@ class _GradientButton extends StatelessWidget {
 class _SpecialButton extends StatelessWidget {
   final String text;
   final VoidCallback onPressed;
+  final bool isLoading;
 
-  const _SpecialButton({required this.text, required this.onPressed});
+  const _SpecialButton({
+    required this.text,
+    required this.onPressed,
+    this.isLoading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -728,13 +743,35 @@ class _SpecialButton extends StatelessWidget {
           ),
           child: Container(
             alignment: Alignment.center,
-            child: Text(
-              text,
-              style: AppTextStyles.button.copyWith(
-                color: AppColors.white,
-                fontSize: 14,
-              ),
-            ),
+            child: isLoading
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        text,
+                        style: AppTextStyles.button.copyWith(
+                          color: AppColors.white,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      ),
+                    ],
+                  )
+                : Text(
+                    text,
+                    style: AppTextStyles.button.copyWith(
+                      color: AppColors.white,
+                      fontSize: 14,
+                    ),
+                  ),
           ),
         ),
       ),

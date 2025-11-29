@@ -64,7 +64,7 @@ public class UserController {
     @GetMapping("/{no}")
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<Users> getUserDetail(
-            @Parameter(description = "사용자 번호", example = "1") @PathVariable Long no) {
+            @Parameter(description = "사용자 번호", example = "1") @PathVariable("no") Long no) {
         
         try {
             Users user = userService.select(no);
@@ -91,7 +91,7 @@ public class UserController {
     @PutMapping("/{no}")
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<String> updateUser(
-            @Parameter(description = "사용자 번호", example = "1") @PathVariable Long no,
+            @Parameter(description = "사용자 번호", example = "1") @PathVariable("no") Long no,
             @RequestBody Users user) {
         
         try {
@@ -128,7 +128,7 @@ public class UserController {
     @PutMapping("/{no}/password")
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<String> changePassword(
-            @Parameter(description = "사용자 번호", example = "1") @PathVariable Long no,
+            @Parameter(description = "사용자 번호", example = "1") @PathVariable("no") Long no,
             @RequestBody Users passwordData) {
         
         try {
