@@ -27,6 +27,7 @@ class _NegotiationsProgressScreenState
     '대기',
     '분석중',
     '분석완료',
+    '분석실패',
     '상대방대기',
     '상대방응답',
     '중재안제시',
@@ -58,8 +59,33 @@ class _NegotiationsProgressScreenState
         setState(() {
           _issues = data.where((item) {
             final status = (item["status"] ?? '').toString().trim();
-            return progressStatuses.contains(status);
+            if (!progressStatuses.contains(status)) return false;
+
+            final ownerRaw = item['userNo'];
+            final opponentRaw = item['opponentUserNo'];
+
+            int? owner = ownerRaw is int
+                ? ownerRaw
+                : int.tryParse(ownerRaw?.toString() ?? '');
+            int? opponent = opponentRaw is int
+                ? opponentRaw
+                : int.tryParse(opponentRaw?.toString() ?? '');
+
+            // ✅ 1) 내가 작성자인 경우: 모든 진행 상태 다 보여줌
+            if (owner != null && owner == userNo) {
+              return true;
+            }
+
+            // ✅ 2) 내가 상대방인 경우: "상대방대기" 이후 단계만 보여줌
+            if (opponent != null && opponent == userNo) {
+              final step = _statusStep(status); // 1~6 단계
+              return step >= 4; // 4: 상대방대기, 5: 상대방응답, 6: 중재안제시
+            }
+
+            // ✅ 3) 나와 상관없는 이슈는 안 보이게
+            return false;
           }).toList();
+
           _isLoading = false;
         });
       } else {
@@ -77,23 +103,19 @@ class _NegotiationsProgressScreenState
         return 1;
       case '분석중':
         return 2;
-
       case '분석완료':
       case '분석실패':
         return 3;
-
       case '상대방대기':
         return 4;
       case '상대방응답':
         return 5;
       case '중재안제시':
         return 6;
-
       default:
         return 1;
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -142,6 +164,10 @@ class _NegotiationsProgressScreenState
                           final step = _statusStep(status);
                           final issueNo = item['no'];
 
+                          final userNo = item['userNo']; // 작성자
+                          final opponentUserNo =
+                              item['opponentUserNo']; // 상대방
+
                           return _buildNegotiationCard(
                             context,
                             status,
@@ -150,6 +176,8 @@ class _NegotiationsProgressScreenState
                             '$step/6',
                             _statusColor(status),
                             issueNo,
+                            userNo,
+                            opponentUserNo,
                           );
                         },
                       ),
@@ -173,12 +201,14 @@ class _NegotiationsProgressScreenState
         return const Color(0xFF409CFF); // 라이트블루
       case '분석완료':
         return const Color(0xFF6EBD82); // 그린
+      case '분석실패':
+        return const Color.fromARGB(255, 247, 51, 1); // 레드
       case '중재안제시':
         return const Color(0xFFB452FF); // 퍼플
       case '상대방대기':
         return const Color(0xFFFFB340); // 옐로우/오렌지
       case '상대방응답':
-        return const Color(0xFFD96E40); // ✅ 진한 오렌지
+        return const Color(0xFFD96E40); // 진한 오렌지
       default:
         return Colors.grey;
     }
@@ -199,6 +229,8 @@ class _NegotiationsProgressScreenState
     String progress,
     Color progressColor,
     dynamic issueNo,
+    dynamic userNo,
+    dynamic opponentUserNo,
   ) {
     double progressPercent = 0.0;
     if (progress.contains('/')) {
@@ -207,16 +239,88 @@ class _NegotiationsProgressScreenState
     }
 
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
         debugPrint("📌 [Tap] issueNo = $issueNo (${issueNo.runtimeType})");
 
-        Navigator.pushNamed(
-          context,
-          '/negotiation-detail',
-          arguments: {
-            'status': status,
-            'issueNo': issueNo,
-          },
+        final prefs = await SharedPreferences.getInstance();
+        final currentUserNo = prefs.getInt('userNo');
+
+        if (currentUserNo == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('로그인 정보가 없습니다. 다시 로그인 해주세요.')),
+          );
+          return;
+        }
+
+        // JSON 값이 int / String 섞일 수 있으니 안전하게 변환
+        int? owner;
+        int? opponent;
+
+        if (userNo != null) {
+          owner = userNo is int ? userNo : int.tryParse(userNo.toString());
+        }
+        if (opponentUserNo != null) {
+          opponent = opponentUserNo is int
+              ? opponentUserNo
+              : int.tryParse(opponentUserNo.toString());
+        }
+
+        final trimmedStatus = status.trim();
+
+        // 1) 내가 작성자(user)인 경우 → 기존 상세 플로우
+        if (owner != null && currentUserNo == owner) {
+          Navigator.pushNamed(
+            context,
+            '/negotiation-detail',
+            arguments: {
+              'status': status,
+              'issueNo': issueNo,
+              'isOpponentView': false, // 작성자 입장
+            },
+          );
+          return;
+        }
+
+        // 2) 내가 상대방(opponent)인 경우
+        if (opponent != null && currentUserNo == opponent) {
+          if (trimmedStatus == '상대방대기') {
+            // 상대방이 최초로 요청 메시지를 확인하는 화면
+            Navigator.pushNamed(
+              context,
+              '/opponent-message-view',
+              arguments: {
+                'status': status,
+                'issueNo': issueNo,
+              },
+            );
+          } else if (trimmedStatus == '중재안제시') {
+            // 최종 중재안이 제시된 상태에서 상대방이 보는 화면
+            Navigator.pushNamed(
+              context,
+              '/opponent-final-proposal',
+              arguments: {
+                'status': status,
+                'issueNo': issueNo,
+              },
+            );
+          } else {
+            // 그 외 상태는 읽기/상세 공용 화면 (상대방 입장 플래그 같이 전달)
+            Navigator.pushNamed(
+              context,
+              '/negotiation-detail',
+              arguments: {
+                'status': status,
+                'issueNo': issueNo,
+                'isOpponentView': true, // 상대방 입장
+              },
+            );
+          }
+          return;
+        }
+
+        // 3) 둘 다 아니면 (예외적인 경우)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('이 협상에 대한 권한이 없습니다.')),
         );
       },
       child: Container(
@@ -285,7 +389,8 @@ class _NegotiationsProgressScreenState
                     ],
                   ),
                 ),
-                Icon(Icons.more_vert, size: 22, color: AppColors.textPrimary),
+                const Icon(Icons.more_vert,
+                    size: 22, color: AppColors.textPrimary),
               ],
             ),
             const SizedBox(height: 16),

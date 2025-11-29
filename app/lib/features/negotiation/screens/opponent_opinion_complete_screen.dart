@@ -58,7 +58,7 @@ class OpponentOpinionCompleteScreen extends StatelessWidget {
                     const SizedBox(height: 30),
 
                     // 상세 안내
-                    Container(
+                    SizedBox(
                       width: 340,
                       child: const Text(
                         '''서비스를 이용해 주셔서 감사합니다.  
