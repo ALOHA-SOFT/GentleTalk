@@ -30,6 +30,8 @@ import 'features/negotiation/screens/opponent_final_proposal_screen.dart';
 import 'features/negotiation/screens/opponent_opinion_complete_screen.dart';
 import 'features/negotiation/screens/opponent_negotiation_success_screen.dart';
 import 'features/negotiation/screens/opponent_negotiation_failed_screen.dart';
+import 'features/negotiation/screens/formal_notice_send_screen.dart';
+import 'features/negotiation/screens/negotiation_content_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,8 +61,9 @@ class MainApp extends StatelessWidget {
         '/terms': (context) => const TermsScreen(),
         '/home': (context) => const HomeScreen(),
         '/mypage': (context) => const MyPageScreen(),
-        '/negotiations-progress': (context) => const NegotiationsProgressScreen(),
-        '/negotiations-history': (context) => const NegotiationsHistoryScreen(),
+        // '/negotiations-progress': (context) => const NegotiationsProgressScreen(),
+        // '/negotiations-history': (context) => const NegotiationsHistoryScreen(),
+        '/negotiations-content' : (context) => const NegotiationContentScreen(),
         '/find-negotiator': (context) => const FindNegotiatorScreen(),
         '/conflict-input': (context) => const ConflictInputScreen(),
         '/requirement-input': (context) => const RequirementInputScreen(),
@@ -81,6 +84,7 @@ class MainApp extends StatelessWidget {
         '/opponent-negotiation-success': (context) => const OpponentNegotiationSuccessScreen(),
         '/opponent-negotiation-failed': (context) => const OpponentNegotiationFailedScreen(),
         '/opponent-failed': (context) => const OpponentNegotiationFailedScreen(),
+        '/formal-notice-send': (context) => const FormalNoticeSendScreen(),
       },
     );
   }
