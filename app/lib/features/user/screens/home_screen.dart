@@ -72,18 +72,19 @@ class _HomeScreenState extends State<HomeScreen> {
                         Expanded(
                           child: _buildMenuButton(
                             context,
-                            '진행중인\n협상',
-                            'assets/images/진행중인협상.jpg',
-                            () => _navigateTo(context, '/negotiations-progress'),
+                            '협상\n내역',
+                            'assets/images/협상내역.jpg',
+                            () => _navigateTo(context, '/negotiations-content'),
                           ),
                         ),
                         const SizedBox(width: 25),
                         Expanded(
                           child: _buildMenuButton(
                             context,
-                            '협상\n내역',
-                            'assets/images/협상내역.jpg',
-                            () => _navigateTo(context, '/negotiations-history'),
+                            '내용증명\n발송',
+                            'assets/images/내용증명발송.jpg',
+                            () =>
+                                _navigateTo(context, '/formal-notice-send'),
                           ),
                         ),
                       ],
