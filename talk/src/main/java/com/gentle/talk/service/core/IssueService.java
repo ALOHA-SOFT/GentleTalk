@@ -64,8 +64,8 @@ public interface IssueService extends BaseService<Issue> {
     // 상대방 의견 추가
     boolean updateOpponentRequirements(Long issueNo, String opponentRequirements);
 
-    // 선택된 중재안 저장
-    boolean updateSelectedMediationProposal(Long issueNo, String selectedMediationProposal);
+    // 선택된 중재안 및 추가조건 저장
+    boolean updateSelectedMediationProposal(Long issueNo, String selectedMediationProposal, String additionalConditions);
 
     // flag 상태 변경
     boolean updateFlag(Long issueNo, String flag);

@@ -350,7 +350,7 @@ public class IssueServiceImpl extends BaseServiceImpl<Issue, IssueMapper> implem
 
                     협상 메시지 작성 규칙:
                     - 한국어로 작성한다.
-                    - 첫 문장은 안녕하세요. [상대방 이름]님, 으로 시작한다.
+                    - 첫 문장은 안녕하세요. 시작한다.
                     - 5~8문장 정도의 하나의 메시지로 작성한다.
                     - 상대방을 존중하는 톤으로, 감정적인 비난 없이 쓴다.
                     - I-message(나 중심 표현)를 사용한다. (예: "저는 ~라고 느꼈습니다.")
@@ -517,13 +517,14 @@ public class IssueServiceImpl extends BaseServiceImpl<Issue, IssueMapper> implem
     }
 
     @Override
-    public boolean updateSelectedMediationProposal(Long issueNo, String selectedMediationProposal) {
-        log.info("## 선택된 중재안 저장 ##");
+    public boolean updateSelectedMediationProposal(Long issueNo, String selectedMediationProposal, String additionalConditions) {
+        log.info("## 선택된 중재안 및 추가조건 저장 ##");
+        log.info("issueNo={}, selectedMediationProposal={}, additionalConditions={}", issueNo, selectedMediationProposal, additionalConditions);
         try {
-            int updated = mapper.updateRequestedMediationProposals(issueNo, selectedMediationProposal, "중재안제시");
+            int updated = mapper.updateRequestedMediationProposals(issueNo, selectedMediationProposal, additionalConditions, "중재안제시");
             return updated > 0;   // 업데이트 성공 여부 반환
         } catch (Exception e) {
-            log.error("상대방 의견 업데이트 중 오류 발생", e);
+            log.error("선택된 중재안 및 추가조건 업데이트 중 오류 발생", e);
             return false;
         } 
     }

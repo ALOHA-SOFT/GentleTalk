@@ -49,6 +49,6 @@ public class Users extends Base {
   private String gender;   // 성별
   private String birth;    // 생년월일
 
-  private String address; // 주소 (DB에서 빠져야 할 항목 혹은 UI에 추가)
+  // private String address; // 주소 (DB에서 빠져야 할 항목 혹은 UI에 추가)
   
 }

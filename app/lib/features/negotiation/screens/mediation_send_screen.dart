@@ -41,9 +41,19 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
       _hasAdditionalConditions =
           (args['hasAdditionalConditions'] as bool?) ?? false;
 
-      // optionNumber / selectedProposalText 를 넘겼어도
-      // 최종적으로는 DB 기준(selectedMediationProposal)을 신뢰
-      _loadIssueDetail();
+      // 🔥 arguments로 전달된 selectedProposalText가 있으면 우선 사용
+      final passedProposal = args['selectedProposalText'] as String?;
+      if (passedProposal != null && passedProposal.isNotEmpty) {
+        setState(() {
+          _selectedProposalText = passedProposal;
+          _isLoading = false;
+        });
+        // API 호출은 발송 여부 확인용으로만
+        _checkMediationSentStatus();
+      } else {
+        // 전달된 값이 없으면 기존대로 API로 불러오기
+        _loadIssueDetail();
+      }
     }
   }
 
@@ -132,6 +142,46 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
     }
   }
 
+  /// 발송 여부만 확인하는 API (중재안 텍스트는 이미 전달받은 상태)
+  Future<void> _checkMediationSentStatus() async {
+    if (_issueNo == null) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      final uri =
+          Uri.parse('${AppConfig.baseUrl}/api/v1/issues/$_issueNo');
+      debugPrint('📡 GET $uri (check sent status only)');
+
+      final res = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (res.statusCode == 200) {
+        final data =
+            json.decode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+
+        final mediationSentYnRaw = data['flag'];
+        String yn = (mediationSentYnRaw ?? '').toString().trim();
+        yn = yn.replaceAll('Ｙ', 'Y').replaceAll('Ｎ', 'N');
+        final alreadySent = yn.toUpperCase() == 'Y';
+
+        debugPrint('flag(mediationSentYn): $yn, alreadySent: $alreadySent');
+
+        setState(() {
+          _alreadySent = alreadySent;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ 발송 상태 확인 오류: $e');
+    }
+  }
+
   /// 중재안 발송 API
   Future<bool> _sendMediation() async {
     if (_issueNo == null) return false;
@@ -144,11 +194,17 @@ class _MediationSendScreenState extends State<MediationSendScreen> {
           '${AppConfig.baseUrl}/api/v1/issues/$_issueNo/send-mediation');
       debugPrint('📡 PUT $uri (send mediation)');
 
+      // 추가 조건 입력 모드일 때는 입력된 텍스트를, 아니면 빈 문자열 전송
+      final additionalConditionsText = _hasAdditionalConditions
+          ? _additionalConditionsController.text.trim()
+          : '';
+
       final body = {
-        'additionalConditions': _hasAdditionalConditions
-            ? _additionalConditionsController.text.trim()
-            : null,
+        'additionalConditions': additionalConditionsText,
       };
+
+      debugPrint('📤 발송 데이터: $body');
+      debugPrint('추가조건 모드: $_hasAdditionalConditions, 추가조건: "$additionalConditionsText"');
 
       final res = await http.put(
         uri,

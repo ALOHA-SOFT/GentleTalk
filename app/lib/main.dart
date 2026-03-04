@@ -80,6 +80,7 @@ class MainApp extends StatelessWidget {
         '/opponent-opinion-complete': (context) => const OpponentOpinionCompleteScreen(),
         '/opponent-negotiation-success': (context) => const OpponentNegotiationSuccessScreen(),
         '/opponent-negotiation-failed': (context) => const OpponentNegotiationFailedScreen(),
+        '/opponent-failed': (context) => const OpponentNegotiationFailedScreen(),
       },
     );
   }
