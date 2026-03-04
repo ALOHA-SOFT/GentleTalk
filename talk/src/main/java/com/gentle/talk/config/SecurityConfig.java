@@ -52,6 +52,8 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         // HTTP 보안 설정 시작
         http
+                // CORS 활성화
+                .cors(cors -> cors.configure(http))
                 .authorizeHttpRequests(authorize -> authorize
                                 // JWT 인증 API는 모두 허용
                                 .requestMatchers("/api/v1/auth/**").permitAll()

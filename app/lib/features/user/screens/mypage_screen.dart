@@ -120,8 +120,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
         );
       }
     } catch (e) {
+      debugPrint('❌ 내 정보 조회 오류: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('서버와 통신 중 오류가 발생했습니다')),
+        SnackBar(
+          content: Text('서버와 통신 중 오류가 발생했습니다\n상세: $e'),
+          duration: const Duration(seconds: 5),
+        ),
       );
     } finally {
       if (mounted) {
@@ -182,8 +186,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
         );
       }
     } catch (e) {
+      debugPrint('❌ 내 정보 수정 오류: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('서버와 통신 중 오류가 발생했습니다')),
+        SnackBar(
+          content: Text('서버와 통신 중 오류가 발생했습니다\n상세: $e'),
+          duration: const Duration(seconds: 5),
+        ),
       );
     }
   }

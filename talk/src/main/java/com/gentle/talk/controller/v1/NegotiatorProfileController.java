@@ -43,7 +43,7 @@ public class NegotiatorProfileController {
 
     @GetMapping("/{no}")
     @Operation(summary = "협상가 프로필 조회", description = "프로필 번호로 협상가 프로필을 조회합니다")
-    public ResponseEntity<?> getProfile(@PathVariable Long no) {
+    public ResponseEntity<?> getProfile(@PathVariable("no") Long no) {
         log.info("## 협상가 프로필 조회 ##");
         log.info("no={}", no);
 
@@ -62,7 +62,7 @@ public class NegotiatorProfileController {
 
     @GetMapping("/user/{userNo}")
     @Operation(summary = "회원 번호로 협상가 프로필 조회", description = "회원 번호로 협상가 프로필을 조회합니다")
-    public ResponseEntity<?> getProfileByUserNo(@PathVariable Long userNo) {
+    public ResponseEntity<?> getProfileByUserNo(@PathVariable("userNo") Long userNo) {
         log.info("## 회원 번호로 협상가 프로필 조회 ##");
         log.info("userNo={}", userNo);
 
@@ -141,7 +141,7 @@ public class NegotiatorProfileController {
 
     @PutMapping("/{no}")
     @Operation(summary = "협상가 프로필 수정", description = "협상가 프로필 정보를 수정합니다")
-    public ResponseEntity<?> updateProfile(@PathVariable Long no, @RequestBody NegotiatorProfile profile) {
+    public ResponseEntity<?> updateProfile(@PathVariable("no") Long no, @RequestBody NegotiatorProfile profile) {
         log.info("## 협상가 프로필 수정 ##");
         log.info("no={}, profile={}", no, profile);
 
@@ -161,7 +161,7 @@ public class NegotiatorProfileController {
 
     @PutMapping("/{no}/rating")
     @Operation(summary = "협상가 평점 업데이트", description = "협상가의 평점을 업데이트합니다")
-    public ResponseEntity<?> updateRating(@PathVariable Long no, @RequestParam double rating) {
+    public ResponseEntity<?> updateRating(@PathVariable("no") Long no, @RequestParam double rating) {
         log.info("## 협상가 평점 업데이트 ##");
         log.info("no={}, rating={}", no, rating);
 
@@ -180,7 +180,7 @@ public class NegotiatorProfileController {
 
     @DeleteMapping("/{no}")
     @Operation(summary = "협상가 프로필 삭제", description = "협상가 프로필을 삭제합니다")
-    public ResponseEntity<?> deleteProfile(@PathVariable Long no) {
+    public ResponseEntity<?> deleteProfile(@PathVariable("no") Long no) {
         log.info("## 협상가 프로필 삭제 ##");
         log.info("no={}", no);
 

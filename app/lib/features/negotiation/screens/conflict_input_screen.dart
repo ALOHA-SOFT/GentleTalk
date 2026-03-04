@@ -95,7 +95,10 @@ Future<void> _submitIssue() async {
       if (!mounted) return;
       debugPrint('submitIssue error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('서버와 통신 중 오류가 발생했습니다')),
+        SnackBar(
+          content: Text('서버와 통신 중 오류가 발생했습니다\n상세: $e'),
+          duration: const Duration(seconds: 5),
+        ),
       );
     }
   }

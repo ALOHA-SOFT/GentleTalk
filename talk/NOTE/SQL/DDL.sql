@@ -1,4 +1,4 @@
--- Active: 1758440462829@@127.0.0.1@3306@gentletalk
+-- Active: 1764402156272@@127.0.0.1@3306@gentletalk
 
 USE `gentletalk`;
 
@@ -23,7 +23,7 @@ CREATE TABLE `users` (
 	`email` VARCHAR(100) NOT NULL COMMENT '이메일',
 	`birth` DATE NOT NULL COMMENT '생년월일',
 	`tel` VARCHAR(100) NOT NULL COMMENT '전화번호',
-	`address` VARCHAR(200) NOT NULL COMMENT '주소',
+	-- `address` VARCHAR(200) NOT NULL COMMENT '주소',
 	`enabled` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '활성화여부',
 	`created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
 	`updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP	COMMENT '수정일자'
@@ -80,7 +80,9 @@ CREATE TABLE `issues` (
 	`opponent_analysis_result` TEXT COMMENT '상대방 요구사항 분석결과',
 	`mediation_proposals` JSON COMMENT '중재안',
 	`selected_mediation_proposal` JSON COMMENT '선택된 중재안',
+	`additional_conditions` TEXT COMMENT '추가조건',
 	`negotiation_message` TEXT COMMENT '협상메시지',
+	`flag` VARCHAR(1) NOT NULL DEFAULT 'N' COMMENT '플래그 (Y/N)',
 	`status` VARCHAR(20) NOT NULL DEFAULT '대기' COMMENT '상태 (대기, 분석중, 분석완료, 분석실패, 상대방대기, 상대방응답, 중재안제시, 협상완료, 협상결렬)',
 	`created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
 	`updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일자',

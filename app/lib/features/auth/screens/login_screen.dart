@@ -46,6 +46,9 @@ class _LoginScreenState extends State<LoginScreen> {
       }),
     );
 
+    debugPrint('📡 로그인 응답: ${response.statusCode}');
+    debugPrint('📡 응답 본문: ${response.body}');
+
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
 
@@ -74,13 +77,32 @@ class _LoginScreenState extends State<LoginScreen> {
 
     Navigator.pushReplacementNamed(context, '/home');
   } else {
+    String errorMessage = '로그인 실패';
+    try {
+      final responseBody = jsonDecode(utf8.decode(response.bodyBytes));
+      if (responseBody is Map && responseBody['message'] != null) {
+        errorMessage = responseBody['message'];
+      } else if (responseBody is Map && responseBody['error'] != null) {
+        errorMessage = responseBody['error'];
+      }
+    } catch (_) {
+      errorMessage = '로그인 실패 (${response.statusCode}): ${response.body}';
+    }
+    
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('로그인 실패: ${response.statusCode}')),
+      SnackBar(
+        content: Text(errorMessage),
+        duration: const Duration(seconds: 5),
+      ),
     );
   }
   } catch (e) {
+    debugPrint('❌ 로그인 오류: $e');
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('서버와 통신 중 오류가 발생했습니다')),
+      SnackBar(
+        content: Text('서버와 통신 중 오류가 발생했습니다\n상세: $e'),
+        duration: const Duration(seconds: 5),
+      ),
     );
   }
 }

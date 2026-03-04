@@ -43,7 +43,7 @@ public class NegotiationController {
 
     @GetMapping("/{no}")
     @Operation(summary = "협상 조회", description = "협상 번호로 협상을 조회합니다")
-    public ResponseEntity<?> getNegotiation(@PathVariable Long no) {
+    public ResponseEntity<?> getNegotiation(@PathVariable("no") Long no) {
         log.info("## 협상 조회 ##");
         log.info("no={}", no);
 
@@ -62,7 +62,7 @@ public class NegotiationController {
 
     @GetMapping("/issue/{issueNo}")
     @Operation(summary = "이슈의 협상 목록", description = "특정 이슈에 대한 협상 목록을 조회합니다")
-    public ResponseEntity<?> getNegotiationsByIssue(@PathVariable Long issueNo) {
+    public ResponseEntity<?> getNegotiationsByIssue(@PathVariable("issueNo") Long issueNo) {
         log.info("## 이슈의 협상 목록 조회 ##");
         log.info("issueNo={}", issueNo);
 
@@ -77,7 +77,7 @@ public class NegotiationController {
 
     @GetMapping("/user/{userNo}")
     @Operation(summary = "협상가의 협상 목록", description = "협상가가 진행한 협상 목록을 조회합니다")
-    public ResponseEntity<?> getNegotiationsByUser(@PathVariable Long userNo) {
+    public ResponseEntity<?> getNegotiationsByUser(@PathVariable("userNo") Long userNo) {
         log.info("## 협상가의 협상 목록 조회 ##");
         log.info("userNo={}", userNo);
 
@@ -107,7 +107,7 @@ public class NegotiationController {
 
     @GetMapping("/ongoing/{userNo}")
     @Operation(summary = "진행 중인 협상", description = "협상가의 진행 중인 협상을 조회합니다")
-    public ResponseEntity<?> getOngoingNegotiations(@PathVariable Long userNo) {
+    public ResponseEntity<?> getOngoingNegotiations(@PathVariable("userNo") Long userNo) {
         log.info("## 진행 중인 협상 조회 ##");
         log.info("userNo={}", userNo);
 
@@ -122,7 +122,7 @@ public class NegotiationController {
 
     @GetMapping("/recent/{userNo}")
     @Operation(summary = "최근 협상", description = "협상가의 최근 협상을 조회합니다")
-    public ResponseEntity<?> getRecentNegotiations(@PathVariable Long userNo, @RequestParam(defaultValue = "5") int limit) {
+    public ResponseEntity<?> getRecentNegotiations(@PathVariable("userNo") Long userNo, @RequestParam(defaultValue = "5") int limit) {
         log.info("## 최근 협상 조회 ##");
         log.info("userNo={}, limit={}", userNo, limit);
 
@@ -137,7 +137,7 @@ public class NegotiationController {
 
     @GetMapping("/count/{userNo}")
     @Operation(summary = "상태별 협상 개수", description = "협상가의 상태별 협상 개수를 조회합니다")
-    public ResponseEntity<?> countByStatus(@PathVariable Long userNo, @RequestParam(required = false) String status) {
+    public ResponseEntity<?> countByStatus(@PathVariable("userNo") Long userNo, @RequestParam(required = false) String status) {
         log.info("## 상태별 협상 개수 조회 ##");
         log.info("userNo={}, status={}", userNo, status);
 
@@ -152,7 +152,7 @@ public class NegotiationController {
 
     @PutMapping("/{no}")
     @Operation(summary = "협상 수정", description = "협상 정보를 수정합니다")
-    public ResponseEntity<?> updateNegotiation(@PathVariable Long no, @RequestBody Negotiation negotiation) {
+    public ResponseEntity<?> updateNegotiation(@PathVariable("no") Long no, @RequestBody Negotiation negotiation) {
         log.info("## 협상 수정 ##");
         log.info("no={}, negotiation={}", no, negotiation);
 
@@ -172,7 +172,7 @@ public class NegotiationController {
 
     @PutMapping("/{no}/accept")
     @Operation(summary = "협상 수락", description = "협상을 수락합니다")
-    public ResponseEntity<?> acceptNegotiation(@PathVariable Long no) {
+    public ResponseEntity<?> acceptNegotiation(@PathVariable("no") Long no) {
         log.info("## 협상 수락 ##");
         log.info("no={}", no);
 
@@ -191,7 +191,7 @@ public class NegotiationController {
 
     @PutMapping("/{no}/finalize")
     @Operation(summary = "협상 체결", description = "협상을 체결합니다")
-    public ResponseEntity<?> finalizeNegotiation(@PathVariable Long no) {
+    public ResponseEntity<?> finalizeNegotiation(@PathVariable("no") Long no) {
         log.info("## 협상 체결 ##");
         log.info("no={}", no);
 
@@ -210,7 +210,7 @@ public class NegotiationController {
 
     @PutMapping("/{no}/reject")
     @Operation(summary = "협상 불발", description = "협상을 불발 처리합니다")
-    public ResponseEntity<?> rejectNegotiation(@PathVariable Long no) {
+    public ResponseEntity<?> rejectNegotiation(@PathVariable("no") Long no) {
         log.info("## 협상 불발 ##");
         log.info("no={}", no);
 
@@ -229,7 +229,7 @@ public class NegotiationController {
 
     @PutMapping("/{no}/status")
     @Operation(summary = "협상 상태 변경", description = "협상의 상태를 변경합니다")
-    public ResponseEntity<?> updateStatus(@PathVariable Long no, @RequestParam String status) {
+    public ResponseEntity<?> updateStatus(@PathVariable("no") Long no, @RequestParam String status) {
         log.info("## 협상 상태 변경 ##");
         log.info("no={}, status={}", no, status);
 
@@ -248,7 +248,7 @@ public class NegotiationController {
 
     @DeleteMapping("/{no}")
     @Operation(summary = "협상 삭제", description = "협상을 삭제합니다")
-    public ResponseEntity<?> deleteNegotiation(@PathVariable Long no) {
+    public ResponseEntity<?> deleteNegotiation(@PathVariable("no") Long no) {
         log.info("## 협상 삭제 ##");
         log.info("no={}", no);
 
