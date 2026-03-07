@@ -1,3 +1,9 @@
+import 'package:app/features/formal_notice/screens/formal_notice_complete_screen.dart';
+import 'package:app/features/formal_notice/screens/formal_notice_content_screen.dart';
+import 'package:app/features/formal_notice/screens/formal_notice_detail-screen.dart';
+import 'package:app/features/formal_notice/screens/formal_notice_expert_request_screen.dart';
+import 'package:app/features/formal_notice/screens/formal_notice_payment_screen.dart';
+import 'package:app/features/formal_notice/screens/formal_notice_ways_screen.dart';
 import 'package:flutter/material.dart';
 import 'features/intro/screens/intro_screen.dart';
 import 'features/onboarding/screens/onboarding_screen.dart';
@@ -9,8 +15,6 @@ import 'features/auth/screens/find_password_screen.dart';
 import 'features/auth/screens/terms_screen.dart';
 import 'features/user/screens/home_screen.dart';
 import 'features/user/screens/mypage_screen.dart';
-import 'features/user/screens/negotiations_progress_screen.dart';
-import 'features/user/screens/negotiations_history_screen.dart';
 import 'features/user/screens/find_negotiator_screen.dart';
 import 'features/negotiation/screens/conflict_input_screen.dart';
 import 'features/negotiation/screens/requirement_input_screen.dart';
@@ -30,8 +34,9 @@ import 'features/negotiation/screens/opponent_final_proposal_screen.dart';
 import 'features/negotiation/screens/opponent_opinion_complete_screen.dart';
 import 'features/negotiation/screens/opponent_negotiation_success_screen.dart';
 import 'features/negotiation/screens/opponent_negotiation_failed_screen.dart';
-import 'features/negotiation/screens/formal_notice_send_screen.dart';
 import 'features/negotiation/screens/negotiation_content_screen.dart';
+import 'features/formal_notice/screens/formal_notice_send_screen.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -84,7 +89,13 @@ class MainApp extends StatelessWidget {
         '/opponent-negotiation-success': (context) => const OpponentNegotiationSuccessScreen(),
         '/opponent-negotiation-failed': (context) => const OpponentNegotiationFailedScreen(),
         '/opponent-failed': (context) => const OpponentNegotiationFailedScreen(),
+        '/formal-notice-content': (context) => const FormalNoticeContentScreen(),
+        '/formal-notice-detail': (context) => const FormalNoticeDetailScreen(),
         '/formal-notice-send': (context) => const FormalNoticeSendScreen(),
+        '/formal-notice-ways': (context) => const FormalNoticeWaysScreen(),
+        '/formal-notice-payment': (context) => const FormalNoticePaymentScreen(),
+        '/formal-notice-complete': (context) => const FormalNoticeCompleteScreen(),
+        '/formal-notice-expert-request': (context) => const FormalNoticeExpertRequestScreen(),
       },
     );
   }

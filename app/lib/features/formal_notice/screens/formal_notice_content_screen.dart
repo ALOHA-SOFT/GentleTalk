@@ -1,23 +1,22 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
 import '../../../core/constants/config.dart';
 import '../../user/widgets/bottom_nav_bar.dart';
 
-import 'package:shared_preferences/shared_preferences.dart';
-
-class NegotiationContentScreen extends StatefulWidget {
-  const NegotiationContentScreen({super.key});
+class FormalNoticeContentScreen extends StatefulWidget {
+  const FormalNoticeContentScreen({super.key});
 
   @override
-  State<NegotiationContentScreen> createState() =>
-      _NegotiationContentScreenState();
+  State<FormalNoticeContentScreen> createState() =>
+      _FormalNoticeContentScreenState();
 }
 
-class _NegotiationContentScreenState extends State<NegotiationContentScreen>
+class _FormalNoticeContentScreenState extends State<FormalNoticeContentScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
@@ -31,6 +30,13 @@ class _NegotiationContentScreenState extends State<NegotiationContentScreen>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _goCreate() async {
+    final result = await Navigator.pushNamed(context, '/formal-notice-send');
+    if (result == true && mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -51,7 +57,7 @@ class _NegotiationContentScreenState extends State<NegotiationContentScreen>
           },
         ),
         title: Text(
-          '협상 내역',
+          '내용증명 내역',
           style: AppTextStyles.heading.copyWith(fontSize: 21),
         ),
         centerTitle: false,
@@ -66,20 +72,18 @@ class _NegotiationContentScreenState extends State<NegotiationContentScreen>
             fontWeight: FontWeight.w800,
           ),
           tabs: const [
-            Tab(text: '진행중인 협상'),
-            Tab(text: '협상내역'),
+            Tab(text: '진행중인 내용증명'),
+            Tab(text: '발송 내역'),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
-        children: const [
-          _NegotiationsProgressTab(), // ✅ 진행중
-          _NegotiationsHistoryTab(), // ✅ 완료/결렬
-        ],
+        children: const [_FormalNoticeProgressTab(), _FormalNoticeHistoryTab()],
       ),
       bottomNavigationBar: BottomNavBar(
-        currentIndex: 0,
+        currentIndex: 3,
+        onCenterTap: _goCreate,
         onTap: (index) {
           BottomNavBar.navigateToIndex(context, index);
         },
@@ -89,42 +93,37 @@ class _NegotiationContentScreenState extends State<NegotiationContentScreen>
 }
 
 /* -------------------------------------------------------------------------- */
-/*                            진행중인 협상 TAB                                */
+/*                          진행중인 내용증명 TAB                              */
 /* -------------------------------------------------------------------------- */
 
-class _NegotiationsProgressTab extends StatefulWidget {
-  const _NegotiationsProgressTab();
+class _FormalNoticeProgressTab extends StatefulWidget {
+  const _FormalNoticeProgressTab();
 
   @override
-  State<_NegotiationsProgressTab> createState() =>
-      _NegotiationsProgressTabState();
+  State<_FormalNoticeProgressTab> createState() =>
+      _FormalNoticeProgressTabState();
 }
 
-class _NegotiationsProgressTabState extends State<_NegotiationsProgressTab> {
-  List<dynamic> _issues = [];
+class _FormalNoticeProgressTabState extends State<_FormalNoticeProgressTab> {
+  List<dynamic> _items = [];
   bool _isLoading = true;
 
-  /// 진행 중으로 볼 상태 목록
-  final List<String> progressStatuses = [
-    '대기',
-    '분석중',
-    '분석완료',
-    '분석실패',
-    '상대방대기',
-    '상대방응답',
-    '중재안제시',
-  ];
+  final List<String> progressStatuses = ['대기', '분석중', '분석완료'];
 
   @override
   void initState() {
     super.initState();
-    _fetchIssues();
+    _fetchFormalNotices();
   }
 
-  Future<void> _fetchIssues() async {
+  Future<void> _fetchFormalNotices() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userNo = prefs.getInt('userNo');
+      final token = prefs.getString('jwt');
+
+      debugPrint('=== FormalNoticeContent userNo === $userNo');
+      debugPrint('=== FormalNoticeContent jwt === $token');
 
       if (userNo == null) {
         setState(() => _isLoading = false);
@@ -132,50 +131,36 @@ class _NegotiationsProgressTabState extends State<_NegotiationsProgressTab> {
       }
 
       final response = await http.get(
-        Uri.parse('${AppConfig.baseUrl}/api/v1/issues/user/$userNo'),
+        Uri.parse('${AppConfig.baseUrl}/api/v1/formal-notice/user/$userNo'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode == 200) {
-        List<dynamic> data = json.decode(response.body);
+        final data =
+            json.decode(utf8.decode(response.bodyBytes)) as List<dynamic>;
 
         setState(() {
-          _issues = data.where((item) {
-            final status = (item["status"] ?? '').toString().trim();
-            if (!progressStatuses.contains(status)) return false;
-
-            final ownerRaw = item['userNo'];
-            final opponentRaw = item['opponentUserNo'];
-
-            int? owner = ownerRaw is int
-                ? ownerRaw
-                : int.tryParse(ownerRaw?.toString() ?? '');
-            int? opponent = opponentRaw is int
-                ? opponentRaw
-                : int.tryParse(opponentRaw?.toString() ?? '');
-
-            // ✅ 1) 내가 작성자인 경우: 모든 진행 상태 다 보여줌
-            if (owner != null && owner == userNo) return true;
-
-            // ✅ 2) 내가 상대방인 경우: "상대방대기" 이후 단계만 보여줌
-            if (opponent != null && opponent == userNo) {
-              final step = _statusStep(status);
-              return step >= 4;
-            }
-
-            return false;
+          _items = data.where((item) {
+            final status = (item['status'] ?? '').toString().trim();
+            return progressStatuses.contains(status);
           }).toList();
-
           _isLoading = false;
         });
       } else {
+        debugPrint(
+          'FormalNoticeContent fetch failed: ${response.statusCode} ${response.body}',
+        );
         setState(() => _isLoading = false);
       }
     } catch (e) {
+      debugPrint('FormalNoticeContent fetch error: $e');
       setState(() => _isLoading = false);
     }
   }
 
-  /// 상태별 진행 스텝 (총 6단계)
   int _statusStep(String status) {
     switch (status.trim()) {
       case '대기':
@@ -183,14 +168,7 @@ class _NegotiationsProgressTabState extends State<_NegotiationsProgressTab> {
       case '분석중':
         return 2;
       case '분석완료':
-      case '분석실패':
         return 3;
-      case '상대방대기':
-        return 4;
-      case '상대방응답':
-        return 5;
-      case '중재안제시':
-        return 6;
       default:
         return 1;
     }
@@ -199,20 +177,12 @@ class _NegotiationsProgressTabState extends State<_NegotiationsProgressTab> {
   Color _statusColor(String? rawStatus) {
     final status = (rawStatus ?? '').trim();
     switch (status) {
-      case '분석중':
-        return const Color(0xFF001497);
       case '대기':
         return const Color(0xFF409CFF);
+      case '분석중':
+        return const Color(0xFF001497);
       case '분석완료':
         return const Color(0xFF6EBD82);
-      case '분석실패':
-        return const Color.fromARGB(255, 247, 51, 1);
-      case '중재안제시':
-        return const Color(0xFFB452FF);
-      case '상대방대기':
-        return const Color(0xFFFFB340);
-      case '상대방응답':
-        return const Color(0xFFD96E40);
       default:
         return Colors.grey;
     }
@@ -220,15 +190,49 @@ class _NegotiationsProgressTabState extends State<_NegotiationsProgressTab> {
 
   String _shortenTitle(String text, int maxLen) {
     final trimmed = text.trim();
-    if (trimmed.isEmpty) return '제목 없음';
+    if (trimmed.isEmpty) return '내용증명';
     if (trimmed.length <= maxLen) return trimmed;
     return '${trimmed.substring(0, maxLen)}…';
+  }
+
+  String _buildTitle(dynamic item) {
+    final category = (item['categoryKey'] ?? '').toString();
+    final receiver = (item['receiverName'] ?? '').toString().trim();
+
+    String categoryName;
+    switch (category) {
+      case 'LOAN':
+        categoryName = '대여금';
+        break;
+      case 'LEASE':
+        categoryName = '임대차';
+        break;
+      case 'CONTRACT':
+        categoryName = '계약 관련';
+        break;
+      case 'MEMBERSHIP_REFUND':
+        categoryName = '회원권 환불';
+        break;
+      case 'DIRECT':
+        categoryName = '직접 작성';
+        break;
+      case 'EXPERT':
+        categoryName = '전문가 의뢰';
+        break;
+      default:
+        categoryName = '내용증명';
+    }
+
+    if (receiver.isNotEmpty) {
+      return '$categoryName / $receiver';
+    }
+    return categoryName;
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (_issues.isEmpty) return const Center(child: Text("진행중인 협상이 없습니다."));
+    if (_items.isEmpty) return const Center(child: Text('진행중인 내용증명이 없습니다.'));
 
     return SafeArea(
       child: Padding(
@@ -236,34 +240,29 @@ class _NegotiationsProgressTabState extends State<_NegotiationsProgressTab> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 345),
           child: ListView.separated(
-            itemCount: _issues.length,
+            itemCount: _items.length,
             separatorBuilder: (_, __) => const SizedBox(height: 18),
             itemBuilder: (context, index) {
-              final item = _issues[index];
+              final item = _items[index];
 
               final status = (item['status'] ?? '').toString().trim();
-              final fullTitle = (item['conflictSituation'] ?? '').toString();
-              final title = _shortenTitle(fullTitle, 20);
+              final title = _shortenTitle(_buildTitle(item), 20);
               final rawDate = (item['createdAt'] ?? '').toString();
               final date = rawDate.length >= 10
                   ? rawDate.substring(0, 10)
                   : rawDate;
 
               final step = _statusStep(status);
-              final issueNo = item['no'] ?? item['issueNo'] ?? item['id'];
-              final userNo = item['userNo'];
-              final opponentUserNo = item['opponentUserNo'];
+              final no = item['no'] ?? item['formalNoticeNo'] ?? item['id'];
 
-              return _buildNegotiationCard(
+              return _buildCard(
                 context,
-                status,
-                title,
-                date,
-                '$step/6',
-                _statusColor(status),
-                issueNo,
-                userNo,
-                opponentUserNo,
+                no: no,
+                status: status,
+                title: title,
+                date: date,
+                progress: '$step/3',
+                progressColor: _statusColor(status),
               );
             },
           ),
@@ -272,17 +271,15 @@ class _NegotiationsProgressTabState extends State<_NegotiationsProgressTab> {
     );
   }
 
-  Widget _buildNegotiationCard(
-    BuildContext context,
-    String status,
-    String title,
-    String date,
-    String progress,
-    Color progressColor,
-    dynamic issueNo,
-    dynamic userNo,
-    dynamic opponentUserNo,
-  ) {
+  Widget _buildCard(
+    BuildContext context, {
+    required dynamic no,
+    required String status,
+    required String title,
+    required String date,
+    required String progress,
+    required Color progressColor,
+  }) {
     double progressPercent = 0.0;
     if (progress.contains('/')) {
       final parts = progress.split('/');
@@ -290,71 +287,12 @@ class _NegotiationsProgressTabState extends State<_NegotiationsProgressTab> {
     }
 
     return GestureDetector(
-      onTap: () async {
-        final prefs = await SharedPreferences.getInstance();
-        final currentUserNo = prefs.getInt('userNo');
-
-        if (currentUserNo == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('로그인 정보가 없습니다. 다시 로그인 해주세요.')),
-          );
-          return;
-        }
-
-        int? owner = userNo is int
-            ? userNo
-            : int.tryParse(userNo?.toString() ?? '');
-        int? opponent = opponentUserNo is int
-            ? opponentUserNo
-            : int.tryParse(opponentUserNo?.toString() ?? '');
-
-        final trimmedStatus = status.trim();
-
-        // 작성자
-        if (owner != null && currentUserNo == owner) {
-          Navigator.pushNamed(
-            context,
-            '/negotiation-detail',
-            arguments: {
-              'status': status,
-              'issueNo': issueNo,
-              'isOpponentView': false,
-            },
-          );
-          return;
-        }
-
-        // 상대방
-        if (opponent != null && currentUserNo == opponent) {
-          if (trimmedStatus == '상대방대기') {
-            Navigator.pushNamed(
-              context,
-              '/opponent-message-view',
-              arguments: {'status': status, 'issueNo': issueNo},
-            );
-          } else if (trimmedStatus == '중재안제시') {
-            Navigator.pushNamed(
-              context,
-              '/opponent-final-proposal',
-              arguments: {'status': status, 'issueNo': issueNo},
-            );
-          } else {
-            Navigator.pushNamed(
-              context,
-              '/negotiation-detail',
-              arguments: {
-                'status': status,
-                'issueNo': issueNo,
-                'isOpponentView': true,
-              },
-            );
-          }
-          return;
-        }
-
-        ScaffoldMessenger.of(
+      onTap: () {
+        Navigator.pushNamed(
           context,
-        ).showSnackBar(const SnackBar(content: Text('이 협상에 대한 권한이 없습니다.')));
+          '/formal-notice-detail',
+          arguments: {'no': no, 'status': status},
+        );
       },
       child: Container(
         width: double.infinity,
@@ -382,7 +320,7 @@ class _NegotiationsProgressTabState extends State<_NegotiationsProgressTab> {
                     borderRadius: BorderRadius.circular(5.45),
                   ),
                   child: const Icon(
-                    Icons.folder_outlined,
+                    Icons.description_outlined,
                     size: 30,
                     color: Colors.white,
                   ),
@@ -485,53 +423,55 @@ class _NegotiationsProgressTabState extends State<_NegotiationsProgressTab> {
 }
 
 /* -------------------------------------------------------------------------- */
-/*                               협상내역 TAB                                  */
+/*                               발송 내역 TAB                                  */
 /* -------------------------------------------------------------------------- */
 
-class _NegotiationsHistoryTab extends StatefulWidget {
-  const _NegotiationsHistoryTab();
+class _FormalNoticeHistoryTab extends StatefulWidget {
+  const _FormalNoticeHistoryTab();
 
   @override
-  State<_NegotiationsHistoryTab> createState() =>
-      _NegotiationsHistoryTabState();
+  State<_FormalNoticeHistoryTab> createState() =>
+      _FormalNoticeHistoryTabState();
 }
 
-class _NegotiationsHistoryTabState extends State<_NegotiationsHistoryTab> {
-  List<dynamic> _issues = [];
+class _FormalNoticeHistoryTabState extends State<_FormalNoticeHistoryTab> {
+  List<dynamic> _items = [];
   bool _isLoading = true;
 
-  int? _currentUserNo;
-
-  final List<String> historyStatuses = ['협상완료', '협상결렬'];
+  final List<String> historyStatuses = ['발송완료', '완료'];
 
   @override
   void initState() {
     super.initState();
-    _fetchIssues();
+    _fetchFormalNotices();
   }
 
-  Future<void> _fetchIssues() async {
+  Future<void> _fetchFormalNotices() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userNo = prefs.getInt('userNo');
+      final token = prefs.getString('jwt');
 
       if (userNo == null) {
         setState(() => _isLoading = false);
         return;
       }
 
-      _currentUserNo = userNo;
-
       final response = await http.get(
-        Uri.parse('${AppConfig.baseUrl}/api/v1/issues/user/$userNo'),
+        Uri.parse('${AppConfig.baseUrl}/api/v1/formal-notice/user/$userNo'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode == 200) {
-        List<dynamic> data = json.decode(response.body);
+        final data =
+            json.decode(utf8.decode(response.bodyBytes)) as List<dynamic>;
 
         setState(() {
-          _issues = data.where((item) {
-            final status = (item["status"] ?? '').toString().trim();
+          _items = data.where((item) {
+            final status = (item['status'] ?? '').toString().trim();
             return historyStatuses.contains(status);
           }).toList();
           _isLoading = false;
@@ -539,7 +479,7 @@ class _NegotiationsHistoryTabState extends State<_NegotiationsHistoryTab> {
       } else {
         setState(() => _isLoading = false);
       }
-    } catch (e) {
+    } catch (_) {
       setState(() => _isLoading = false);
     }
   }
@@ -549,10 +489,44 @@ class _NegotiationsHistoryTabState extends State<_NegotiationsHistoryTab> {
     return date.length >= 10 ? date.substring(0, 10) : date;
   }
 
+  String _buildTitle(dynamic item) {
+    final category = (item['categoryKey'] ?? '').toString();
+    final receiver = (item['receiverName'] ?? '').toString().trim();
+
+    String categoryName;
+    switch (category) {
+      case 'LOAN':
+        categoryName = '대여금';
+        break;
+      case 'LEASE':
+        categoryName = '임대차';
+        break;
+      case 'CONTRACT':
+        categoryName = '계약 관련';
+        break;
+      case 'MEMBERSHIP_REFUND':
+        categoryName = '회원권 환불';
+        break;
+      case 'DIRECT':
+        categoryName = '직접 작성';
+        break;
+      case 'EXPERT':
+        categoryName = '전문가 의뢰';
+        break;
+      default:
+        categoryName = '내용증명';
+    }
+
+    if (receiver.isNotEmpty) {
+      return '$categoryName / $receiver';
+    }
+    return categoryName;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (_issues.isEmpty) return const Center(child: Text("지난 협상 기록이 없습니다."));
+    if (_items.isEmpty) return const Center(child: Text('발송 내역이 없습니다.'));
 
     return SafeArea(
       child: Align(
@@ -564,16 +538,14 @@ class _NegotiationsHistoryTabState extends State<_NegotiationsHistoryTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (var item in _issues)
+                for (var item in _items)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10.0),
                     child: _buildHistoryCard(
-                      item['issueNo'] ?? item['no'] ?? item['id'],
-                      _safeDate(item['createdAt']),
-                      (item['conflictSituation'] ?? '').toString(),
-                      (item['status'] ?? '').toString(),
-                      item['userNo'],
-                      item['opponentUserNo'],
+                      no: item['no'] ?? item['formalNoticeNo'] ?? item['id'],
+                      date: _safeDate(item['createdAt']),
+                      title: _buildTitle(item),
+                      status: (item['status'] ?? '').toString(),
                     ),
                   ),
                 const SizedBox(height: 30),
@@ -585,88 +557,24 @@ class _NegotiationsHistoryTabState extends State<_NegotiationsHistoryTab> {
     );
   }
 
-  Widget _buildHistoryCard(
-    dynamic issueNo,
-    String date,
-    String title,
-    String status,
-    dynamic ownerUserNo,
-    dynamic opponentUserNo,
-  ) {
+  Widget _buildHistoryCard({
+    required dynamic no,
+    required String date,
+    required String title,
+    required String status,
+  }) {
     final trimmedStatus = status.trim();
-    final isCompleted = trimmedStatus == '협상완료';
-    final isFailed = trimmedStatus == '협상결렬';
-
-    final Color statusColor = isCompleted
+    final Color statusColor = trimmedStatus == '발송완료' || trimmedStatus == '완료'
         ? const Color(0xFF1DCBD3)
-        : isFailed
-        ? const Color(0xFFFF6B6B)
         : Colors.grey;
-
-    final String statusLabel = (isCompleted || isFailed) ? status : '진행 상태';
 
     return GestureDetector(
       onTap: () {
-        final currentUserNo = _currentUserNo;
-
-        int? owner = ownerUserNo is int
-            ? ownerUserNo
-            : int.tryParse(ownerUserNo?.toString() ?? '');
-        int? opponent = opponentUserNo is int
-            ? opponentUserNo
-            : int.tryParse(opponentUserNo?.toString() ?? '');
-
-        if (currentUserNo != null && owner != null && currentUserNo == owner) {
-          String routeName;
-          if (trimmedStatus == '협상완료') {
-            routeName = '/opponent-negotiation-success';
-          } else if (trimmedStatus == '협상결렬') {
-            routeName = '/opponent-failed';
-          } else {
-            routeName = '/negotiation-result';
-          }
-
-          Navigator.pushNamed(
-            context,
-            routeName,
-            arguments: {
-              'issueNo': issueNo,
-              'date': date,
-              'title': title,
-              'status': status,
-            },
-          );
-          return;
-        }
-
-        if (currentUserNo != null &&
-            opponent != null &&
-            currentUserNo == opponent) {
-          String routeName;
-          if (trimmedStatus == '협상완료') {
-            routeName = '/opponent-negotiation-success';
-          } else if (trimmedStatus == '협상결렬') {
-            routeName = '/opponent-negotiation-failed';
-          } else {
-            routeName = '/opponent-negotiation-success';
-          }
-
-          Navigator.pushNamed(
-            context,
-            routeName,
-            arguments: {
-              'issueNo': issueNo,
-              'date': date,
-              'title': title,
-              'status': status,
-            },
-          );
-          return;
-        }
-
-        ScaffoldMessenger.of(
+        Navigator.pushNamed(
           context,
-        ).showSnackBar(const SnackBar(content: Text('이 협상에 대한 권한이 없습니다.')));
+          '/formal-notice-detail',
+          arguments: {'no': no, 'status': status},
+        );
       },
       child: Container(
         width: double.infinity,
@@ -693,7 +601,7 @@ class _NegotiationsHistoryTabState extends State<_NegotiationsHistoryTab> {
                 borderRadius: BorderRadius.circular(5.45),
               ),
               child: const Icon(
-                Icons.folder_outlined,
+                Icons.description_outlined,
                 size: 30,
                 color: Colors.white,
               ),
@@ -730,7 +638,7 @@ class _NegotiationsHistoryTabState extends State<_NegotiationsHistoryTab> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '협상 내용 요약입니다.',
+                        '발송된 내용증명입니다.',
                         style: AppTextStyles.body.copyWith(
                           fontSize: 9,
                           color: const Color(0xFF8A6E00),
@@ -763,7 +671,7 @@ class _NegotiationsHistoryTabState extends State<_NegotiationsHistoryTab> {
                     border: Border.all(color: statusColor, width: 1),
                   ),
                   child: Text(
-                    statusLabel,
+                    status,
                     style: AppTextStyles.body.copyWith(
                       fontSize: 10,
                       color: statusColor,
