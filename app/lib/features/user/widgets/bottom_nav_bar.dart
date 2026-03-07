@@ -5,11 +5,13 @@ import '../../../core/constants/colors.dart';
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
+  final VoidCallback? onCenterTap;
 
   const BottomNavBar({
     super.key,
     required this.currentIndex,
     required this.onTap,
+    this.onCenterTap,
   });
 
   @override
@@ -35,9 +37,9 @@ class BottomNavBar extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _buildNavItem(0, 'assets/icons/home.svg', '홈'),
-                  _buildNavItem(2, 'assets/icons/progress.svg', '진행중'),
-                  const SizedBox(width: 60), // Space for center button
-                  _buildNavItem(3, 'assets/icons/history.svg', '협상내역'),
+                  _buildNavItem(2, 'assets/icons/progress.svg', '협상내역'),
+                  const SizedBox(width: 60),
+                  _buildNavItem(3, 'assets/icons/history.svg', '내용증명'),
                   _buildNavItem(1, 'assets/icons/user-circle.svg', '마이'),
                 ],
               ),
@@ -48,7 +50,7 @@ class BottomNavBar extends StatelessWidget {
               top: 0,
               child: Center(
                 child: GestureDetector(
-                  onTap: () => onTap(4),
+                  onTap: onCenterTap ?? () => onTap(4),
                   child: Container(
                     width: 60,
                     height: 60,
@@ -123,10 +125,10 @@ class BottomNavBar extends StatelessWidget {
         Navigator.pushReplacementNamed(context, '/mypage');
         break;
       case 2:
-        Navigator.pushReplacementNamed(context, '/negotiations-progress');
+        Navigator.pushReplacementNamed(context, '/negotiations-content');
         break;
       case 3:
-        Navigator.pushReplacementNamed(context, '/negotiations-history');
+        Navigator.pushReplacementNamed(context, '/formal-notice-content');
         break;
       case 4:
         Navigator.pushNamed(context, '/conflict-input');

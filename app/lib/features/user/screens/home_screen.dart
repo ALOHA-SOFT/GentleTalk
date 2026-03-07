@@ -81,10 +81,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         Expanded(
                           child: _buildMenuButton(
                             context,
-                            '내용증명\n발송',
-                            'assets/images/내용증명발송.jpg',
+                            '내용\n증명',
+                            'assets/images/내용증명.jpg',
                             () =>
-                                _navigateTo(context, '/formal-notice-send'),
+                                _navigateTo(context, '/formal-notice-content'),
                           ),
                         ),
                       ],

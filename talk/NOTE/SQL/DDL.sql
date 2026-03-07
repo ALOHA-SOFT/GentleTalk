@@ -1,4 +1,4 @@
--- Active: 1764402156272@@127.0.0.1@3306@gentletalk
+-- Active: 1772602212353@@127.0.0.1@3306@gentletalk
 
 USE `gentletalk`;
 
@@ -237,7 +237,42 @@ CREATE TABLE `mediation_proposal_logs` (
 	INDEX `idx_created_at` (`created_at` DESC)
 ) COMMENT '중재안 로그 (AI 캐싱)';
 
+DROP TABLE IF EXISTS `formal_notice`;
 
+CREATE TABLE formal_notice (
+    no BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT 'PK',
 
+    id VARCHAR(100) NOT NULL UNIQUE COMMENT '외부 노출용 UUID',
+
+    user_no BIGINT NOT NULL COMMENT '요청자 회원번호',
+    opponent_user_no BIGINT NULL COMMENT '상대방 회원번호',
+
+    category_key VARCHAR(50) NULL COMMENT '내용증명 코드',
+
+    category_data JSON NULL COMMENT '카테고리별 추가 데이터',
+
+    sender_name VARCHAR(100) NOT NULL COMMENT '발신자 이름',
+    sender_phone VARCHAR(50) NULL COMMENT '발신자 전화번호',
+    sender_address VARCHAR(255) NULL COMMENT '발신자 주소',
+
+    receiver_name VARCHAR(100) NOT NULL COMMENT '수신자 이름',
+    receiver_phone VARCHAR(50) NULL COMMENT '수신자 전화번호',
+    receiver_address VARCHAR(255) NULL COMMENT '수신자 주소',
+
+    flag CHAR(1) NOT NULL DEFAULT 'N' COMMENT '플래그 (Y/N)',
+
+    preview_text TEXT NULL COMMENT 'AI 생성 내용증명',
+
+	`status` VARCHAR(20) NOT NULL DEFAULT '대기' COMMENT '상태 (대기, 분석중, 분석완료, 분석실패, 발송완료)',
+
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '생성일',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일',
+    deleted_at DATETIME NULL COMMENT '삭제일',
+
+    INDEX idx_user_no (user_no),
+    INDEX idx_opponent_user_no (opponent_user_no),
+    INDEX idx_category_key (category_key)
+
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;
