@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+
 import 'package:app/core/widgets/step_indicator.dart';
 import 'package:app/features/formal_notice/screens/formal_notice_preview_screen.dart';
 import 'package:flutter/material.dart';
@@ -9,7 +11,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 class FormalNoticeGeneratingScreen extends StatefulWidget {
   final Map<String, dynamic> requestPayload;
 
-  const FormalNoticeGeneratingScreen({super.key, required this.requestPayload});
+  const FormalNoticeGeneratingScreen({
+    super.key,
+    required this.requestPayload,
+  });
 
   @override
   State<FormalNoticeGeneratingScreen> createState() =>
@@ -21,10 +26,58 @@ class _FormalNoticeGeneratingScreenState
   String? _error;
   bool _done = false;
 
+  /// 프론트에서만 사용하는 진행 단계
+  int _activeStep = 1;
+
+  Timer? _stepTimer1;
+  Timer? _stepTimer2;
+  Timer? _stepTimer3;
+
   @override
   void initState() {
     super.initState();
+    _startFakeProgress();
     _start();
+  }
+
+  @override
+  void dispose() {
+    _stepTimer1?.cancel();
+    _stepTimer2?.cancel();
+    _stepTimer3?.cancel();
+    super.dispose();
+  }
+
+  void _startFakeProgress() {
+    _stepTimer1?.cancel();
+    _stepTimer2?.cancel();
+    _stepTimer3?.cancel();
+
+    setState(() {
+      _activeStep = 1;
+      _done = false;
+    });
+
+    _stepTimer1 = Timer(const Duration(milliseconds: 800), () {
+      if (!mounted || _done) return;
+      setState(() {
+        _activeStep = 1;
+      });
+    });
+
+    _stepTimer2 = Timer(const Duration(milliseconds: 1800), () {
+      if (!mounted || _done) return;
+      setState(() {
+        _activeStep = 2;
+      });
+    });
+
+    _stepTimer3 = Timer(const Duration(milliseconds: 3000), () {
+      if (!mounted || _done) return;
+      setState(() {
+        _activeStep = 3;
+      });
+    });
   }
 
   Future<void> _start() async {
@@ -32,7 +85,13 @@ class _FormalNoticeGeneratingScreenState
       final result = await _callBackend(widget.requestPayload);
       if (!mounted) return;
 
-      setState(() => _done = true);
+      setState(() {
+        _done = true;
+        _activeStep = 3;
+      });
+
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (!mounted) return;
 
       Navigator.pushReplacement(
         context,
@@ -93,6 +152,17 @@ class _FormalNoticeGeneratingScreenState
     return decoded;
   }
 
+  void _retry() {
+    setState(() {
+      _error = null;
+      _done = false;
+      _activeStep = 1;
+    });
+
+    _startFakeProgress();
+    _start();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -105,7 +175,10 @@ class _FormalNoticeGeneratingScreenState
               const SizedBox(height: 6),
               const Text(
                 '내용 증명 작성',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 12),
               const StepIndicator(currentStep: 3, totalSteps: 5),
@@ -131,7 +204,7 @@ class _FormalNoticeGeneratingScreenState
               Expanded(
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 34, 16, 16),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF6F7FA),
                     borderRadius: BorderRadius.circular(12),
@@ -148,30 +221,51 @@ class _FormalNoticeGeneratingScreenState
                             ),
                             const SizedBox(height: 12),
                             ElevatedButton(
-                              onPressed: () {
-                                setState(() => _error = null);
-                                _start();
-                              },
+                              onPressed: _retry,
                               child: const Text('다시 시도'),
                             ),
                           ],
                         )
                       : Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text('잠시만 기다려주세요'),
-                            const SizedBox(height: 16),
-                            const CircularProgressIndicator(),
-                            const SizedBox(height: 18),
-                            _ProgressCard(num: 1, text: '사건 분석', done: _done),
+                            const Text(
+                              '잠시만 기다려주세요',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Color(0xFF6B7280),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3,
+                              ),
+                            ),
+                            const SizedBox(height: 34),
+                            _ProgressCard(
+                              num: 1,
+                              text: '사건 분석',
+                              isActive: _activeStep >= 1,
+                              isDone: _done && _activeStep >= 1,
+                            ),
                             const SizedBox(height: 10),
                             _ProgressCard(
                               num: 2,
                               text: '법적 문장 정리',
-                              done: _done,
+                              isActive: _activeStep >= 2,
+                              isDone: _done && _activeStep >= 2,
                             ),
                             const SizedBox(height: 10),
-                            _ProgressCard(num: 3, text: '내용증명 생성', done: _done),
+                            _ProgressCard(
+                              num: 3,
+                              text: '내용증명 생성',
+                              isActive: _activeStep >= 3,
+                              isDone: _done && _activeStep >= 3,
+                            ),
+                            const Spacer(),
                           ],
                         ),
                 ),
@@ -187,42 +281,85 @@ class _FormalNoticeGeneratingScreenState
 class _ProgressCard extends StatelessWidget {
   final int num;
   final String text;
-  final bool done;
+  final bool isActive;
+  final bool isDone;
 
   const _ProgressCard({
     required this.num,
     required this.text,
-    required this.done,
+    required this.isActive,
+    required this.isDone,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    const activeColor = Color(0xFF00A8B5);
+    const inactiveBorder = Color(0xFFE9EAEC);
+    const inactiveCircle = Color(0xFFE6E8EE);
+    const inactiveText = Color(0xFF222222);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOut,
       height: 64,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE9EAEC)),
+        border: Border.all(
+          color: isActive ? activeColor.withOpacity(0.35) : inactiveBorder,
+          width: isActive ? 1.4 : 1,
+        ),
+        boxShadow: isActive
+            ? [
+                BoxShadow(
+                  color: activeColor.withOpacity(0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ]
+            : null,
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: const Color(0xFFE6E8EE),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 350),
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isActive
+                  ? activeColor.withOpacity(0.14)
+                  : inactiveCircle,
+            ),
+            alignment: Alignment.center,
             child: Text(
               '$num',
-              style: const TextStyle(fontWeight: FontWeight.w800),
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                color: isActive ? activeColor : const Color(0xFF6B7280),
+              ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: isActive ? activeColor : inactiveText,
+              ),
             ),
           ),
-          if (done) const Icon(Icons.check_circle, color: Color(0xFF00ADB5)),
+          AnimatedOpacity(
+            duration: const Duration(milliseconds: 250),
+            opacity: isDone ? 1 : 0,
+            child: const Icon(
+              Icons.check_circle,
+              color: activeColor,
+            ),
+          ),
         ],
       ),
     );
