@@ -49,7 +49,7 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
   void _handleSend() async {
     final receiverName = _nameController.text.isEmpty ? "상대방" : _nameController.text;
     final phone = _phoneController.text.trim();
-    final rawMessage = _negotiationMessage ?? "";
+    final finalMessage = _negotiationMessage ?? "";
 
     if (phone.isEmpty) {
       ScaffoldMessenger.of(context)
@@ -66,8 +66,7 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
       return;
     }
 
-    // ✔️ 2) 메시지 렌더링
-    final finalMessage = rawMessage.replaceAll("[상대방 이름]", receiverName);
+    // ✔️ 2) 메시지는 그대로 사용 (상대방 이름 치환 제거)
 
     // ✔️ 3) 문자 발송
     final success = await sendSmsApi(_issueNo!, phone, finalMessage);
@@ -290,12 +289,6 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
           Expanded(
             child: TextField(
               controller: controller,
-              onChanged: (_) {
-                // 상대방 이름 바뀔 때 프리뷰 다시 그리기
-                if (controller == _nameController) {
-                  setState(() {});
-                }
-              },
               decoration: InputDecoration(
                 hintText: hint,
                 hintStyle: AppTextStyles.body.copyWith(
@@ -325,11 +318,7 @@ class _SendRequestScreenState extends State<SendRequestScreen> {
       );
     }
 
-    String previewText = _negotiationMessage ?? "";
-    previewText = previewText.replaceAll(
-      "[상대방 이름]",
-      _nameController.text.isEmpty ? "상대방" : _nameController.text,
-    );
+    final previewText = _negotiationMessage ?? "";
 
     return Container(
       width: double.infinity,

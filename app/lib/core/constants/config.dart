@@ -1,8 +1,15 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:io' show Platform;
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 
 class AppConfig {
   static String get baseUrl {
+    // 서버
+    // return 'http://119.205.220.249:8090';
+    // return 'https://gentletalk.kr';
+
+
+    // 로컬
     // Flutter Web(Chrome)으로 실행할 때
     if (kIsWeb) {
       return 'http://localhost:8080';

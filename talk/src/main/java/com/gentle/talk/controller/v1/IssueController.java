@@ -1,24 +1,31 @@
 package com.gentle.talk.controller.v1;
 
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.gentle.talk.domain.common.QueryParams;
 import com.gentle.talk.domain.core.Issue;
-import com.gentle.talk.domain.users.CustomUser;
 import com.gentle.talk.domain.users.Users;
 import com.gentle.talk.service.core.IssueService;
 import com.gentle.talk.service.users.UserService;
 import com.github.pagehelper.PageInfo;
-import com.gentle.talk.domain.common.QueryParams;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import org.springframework.security.core.Authentication;
-import org.springframework.boot.autoconfigure.security.SecurityProperties.User;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @RestController
@@ -68,7 +75,7 @@ public class IssueController {
 
     @GetMapping("/{no}")
     @Operation(summary = "이슈 조회", description = "이슈 번호로 이슈를 조회합니다")
-    public ResponseEntity<?> getIssue(@PathVariable Long no) {
+    public ResponseEntity<?> getIssue(@PathVariable("no") Long no) {
         log.info("## 이슈 조회 ##");
         log.info("no={}", no);
 
@@ -94,7 +101,7 @@ public class IssueController {
 
     @GetMapping("/code/{issueCode}")
     @Operation(summary = "이슈 코드로 조회", description = "이슈 코드로 이슈를 조회합니다")
-    public ResponseEntity<?> getIssueByCode(@PathVariable String issueCode) {
+    public ResponseEntity<?> getIssueByCode(@PathVariable("issueCode") String issueCode) {
         log.info("## 이슈 코드로 조회 ##");
         log.info("issueCode={}", issueCode);
 
@@ -128,7 +135,7 @@ public class IssueController {
 
     @GetMapping("/recent/{userNo}")
     @Operation(summary = "최근 이슈", description = "회원의 최근 이슈를 조회합니다")
-    public ResponseEntity<?> getRecentIssues(@PathVariable Long userNo, @RequestParam(defaultValue = "5") int limit) {
+    public ResponseEntity<?> getRecentIssues(@PathVariable("userNo") Long userNo, @RequestParam(defaultValue = "5") int limit) {
         log.info("## 최근 이슈 조회 ##");
         log.info("userNo={}, limit={}", userNo, limit);
 
@@ -143,7 +150,7 @@ public class IssueController {
 
     @GetMapping("/count/{userNo}")
     @Operation(summary = "상태별 이슈 개수", description = "회원의 상태별 이슈 개수를 조회합니다")
-    public ResponseEntity<?> countByStatus(@PathVariable Long userNo, @RequestParam(required = false) String status) {
+    public ResponseEntity<?> countByStatus(@PathVariable("userNo") Long userNo, @RequestParam(required = false) String status) {
         log.info("## 상태별 이슈 개수 조회 ##");
         log.info("userNo={}, status={}", userNo, status);
 
@@ -158,7 +165,7 @@ public class IssueController {
 
     @PutMapping("/{no}")
     @Operation(summary = "이슈 수정", description = "이슈 정보를 수정합니다")
-    public ResponseEntity<?> updateIssue(@PathVariable Long no, @RequestBody Issue issue) {
+    public ResponseEntity<?> updateIssue(@PathVariable("no") Long no, @RequestBody Issue issue) {
         log.info("## 이슈 수정 ##");
         log.info("no={}, issue={}", no, issue);
 
@@ -178,7 +185,7 @@ public class IssueController {
 
     @PutMapping("/{no}/status")
     @Operation(summary = "이슈 상태 변경", description = "이슈의 상태를 변경합니다")
-    public ResponseEntity<?> updateStatus(@PathVariable Long no, @RequestParam String status) {
+    public ResponseEntity<?> updateStatus(@PathVariable("no") Long no, @RequestParam(name = "status") String status) {
         log.info("## 이슈 상태 변경 ##");
         log.info("no={}, status={}", no, status);
 
@@ -197,7 +204,7 @@ public class IssueController {
 
     @PutMapping("/{no}/mediation-proposals")
     @Operation(summary = "중재안 저장", description = "이슈에 대한 중재안을 저장합니다")
-    public ResponseEntity<?> saveMediationProposals(@PathVariable Long no, @RequestBody String mediationProposals) {
+    public ResponseEntity<?> saveMediationProposals(@PathVariable("no") Long no, @RequestBody String mediationProposals) {
         log.info("## 중재안 저장 ##");
         log.info("no={}, mediationProposals={}", no, mediationProposals);
 
@@ -216,7 +223,7 @@ public class IssueController {
 
     @PutMapping("/{no}/select-proposal")
     @Operation(summary = "중재안 선택", description = "중재안 중 하나를 선택합니다")
-    public ResponseEntity<?> selectMediationProposal(@PathVariable Long no, @RequestBody String selectedProposal) {
+    public ResponseEntity<?> selectMediationProposal(@PathVariable("no") Long no, @RequestBody String selectedProposal) {
         log.info("## 중재안 선택 ##");
         log.info("no={}, selectedProposal={}", no, selectedProposal);
 
@@ -241,7 +248,7 @@ public class IssueController {
 
     @DeleteMapping("/{no}")
     @Operation(summary = "이슈 삭제", description = "이슈를 삭제합니다")
-    public ResponseEntity<?> deleteIssue(@PathVariable Long no) {
+    public ResponseEntity<?> deleteIssue(@PathVariable("no") Long no) {
         log.info("## 이슈 삭제 ##");
         log.info("no={}", no);
 
@@ -258,13 +265,13 @@ public class IssueController {
         }
     }
 
-    /**
+    /** 
      * conflict_situation, requirements
      * 요약 + 핵심 쟁점 리스트(analaysis_result)를 반환하는 엔드포인트
      */
     @PostMapping("/{no}/analyze")
     @Operation(summary = "요약 분석", description = "ai를 통해 이슈의 요약과 핵심 쟁점을 분석합니다")
-    public ResponseEntity<?> analyzeIssue(@PathVariable Long no) {
+    public ResponseEntity<?> analyzeIssue(@PathVariable("no") Long no) {
         log.info("## AI - 요약 분석 요청 ##");
         log.info("issueNo={}", no);
 
@@ -281,7 +288,7 @@ public class IssueController {
     }
 
     @PutMapping("/{no}/opponent")
-    public ResponseEntity<?> updateOpponent(@PathVariable Long no, @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> updateOpponent(@PathVariable("no") Long no, @RequestBody Map<String, String> body) {
         log.info("## 상대방 정보 업데이트 ##");
         log.info("issueNo={}", no);
 
@@ -304,7 +311,7 @@ public class IssueController {
         summary = "회원의 이슈 목록",
         description = "회원이 발신자 또는 상대방으로 참여한 이슈 목록을 조회합니다"
     )
-    public ResponseEntity<?> getIssuesByUser(@PathVariable Long userNo) {
+    public ResponseEntity<?> getIssuesByUser(@PathVariable("userNo") Long userNo) {
         log.info("## 회원의 이슈 목록 조회 (발신 + 수신) ## userNo={}", userNo);
 
         try {
@@ -317,30 +324,32 @@ public class IssueController {
     }
 
     /**
-    * 중재안 확정 + 상태 '중재안 제시' 로 변경
+    * 중재안 확정 + 추가조건 + 상태 '중재안 제시' 로 변경
     */
     @PutMapping("/{issueNo}/send-mediation")
-    public ResponseEntity<?> updateMediation(@PathVariable Long issueNo, @RequestBody Map<String, String> body){
-        log.info("## 중재안 업데이트 요청 ##");
+    public ResponseEntity<?> updateMediation(@PathVariable("issueNo") Long issueNo, @RequestBody Map<String, String> body){
+        log.info("## 중재안 및 추가조건 업데이트 요청 ##");
         log.info("issueNo={}, body={}", issueNo, body);
 
         try {
             String selectedProposal = body.get("selectedMediationProposal");
+            String additionalConditions = body.get("additionalConditions");
 
             Issue issue = new Issue();
             issue.setNo(issueNo);                          
-            issue.setSelectedMediationProposal(selectedProposal);   
+            issue.setSelectedMediationProposal(selectedProposal);
+            issue.setAdditionalConditions(additionalConditions);
                   
-            boolean result = issueService.updateSelectedMediationProposal(issueNo, selectedProposal);
+            boolean result = issueService.updateSelectedMediationProposal(issueNo, selectedProposal, additionalConditions);
 
             if (!result) {
-                return ResponseEntity.badRequest().body("중재안 업데이트 실패");
+                return ResponseEntity.badRequest().body("중재안 및 추가조건 업데이트 실패");
             }
 
-            return ResponseEntity.ok("중재안 업데이트 완료");
+            return ResponseEntity.ok("중재안 및 추가조건 업데이트 완료");
 
         } catch (Exception e) {
-            log.error("중재안 업데이트 중 오류 발생", e);
+            log.error("중재안 및 추가조건 업데이트 중 오류 발생", e);
             return ResponseEntity.internalServerError()
                     .body("서버 오류: " + e.getMessage());
         }
@@ -349,7 +358,7 @@ public class IssueController {
     @PutMapping("/{no}/opponent-requirements")
     @Operation(summary = "상대방 의견 추가", description = "상대방 의견(opponent_requirements)만 업데이트합니다.")
     public ResponseEntity<?> updateOpponentRequirements(
-            @PathVariable Long no,
+            @PathVariable("no") Long no,
             @RequestBody Map<String, String> requestBody) {
 
             log.info("## 상대방 의견 추가 ##");

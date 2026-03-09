@@ -40,8 +40,8 @@ public interface IssueMapper extends BaseMapper<Issue> {
   public List<Issue> selectByOpponentContactWithoutUserNo(@Param("phone") String phone);
 
   // 상대방 의견 추가
-  public int updateOpponentRequirements(@Param("no") Long issueNo, @Param("opponentRequirements") String opponentRequirements, String status);
+  public int updateOpponentRequirements(@Param("no") Long issueNo, @Param("opponentRequirements") String opponentRequirements, @Param("status") String status);
 
-  // 선택된 중재안 저장
-  public int updateRequestedMediationProposals(@Param("no") Long issueNo, @Param("selectedMediationProposal") String selectedMediationProposal, String status);
+  // 선택된 중재안 및 추가조건 저장
+  public int updateRequestedMediationProposals(@Param("no") Long issueNo, @Param("selectedMediationProposal") String selectedMediationProposal, @Param("additionalConditions") String additionalConditions, @Param("status") String status);
 }

@@ -160,7 +160,7 @@ public class AuthController {
             userMap.put("birth", user.getBirth());
             userMap.put("gender", user.getGender());
             userMap.put("type", user.getType());   
-            userMap.put("address", user.getAddress()); 
+            // userMap.put("address", user.getAddress()); 
             userMap.put("enabled", user.getEnabled());
 
             Map<String, Object> response = new HashMap<>();
