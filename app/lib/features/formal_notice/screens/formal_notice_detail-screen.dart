@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/text_styles.dart';
@@ -65,7 +66,7 @@ class _FormalNoticeDetailScreenState extends State<FormalNoticeDetailScreen> {
     }
   }
 
-  Future<bool> _deleteFormalNotice(String no) async {
+  Future<(bool, String)> _deleteFormalNotice(String no) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('jwt');
@@ -81,11 +82,35 @@ class _FormalNoticeDetailScreenState extends State<FormalNoticeDetailScreen> {
         },
       );
 
-      debugPrint('✅ 삭제 API 응답: ${res.statusCode} ${res.body}');
-      return res.statusCode == 200 || res.statusCode == 204;
+      final responseText = utf8.decode(res.bodyBytes);
+      debugPrint('✅ 삭제 API 응답: ${res.statusCode} $responseText');
+
+      if (res.statusCode == 200 || res.statusCode == 204) {
+        return (
+          true,
+          responseText.isNotEmpty ? responseText : '내용증명이 삭제되었습니다.',
+        );
+      }
+
+      return (
+        false,
+        responseText.isNotEmpty ? responseText : '삭제에 실패했습니다. 다시 시도해주세요.',
+      );
     } catch (e) {
       debugPrint('❌ 삭제 API 호출 중 오류: $e');
-      return false;
+      return (false, '삭제 중 오류가 발생했습니다.');
+    }
+  }
+
+  String _formatCreatedAt(String raw) {
+    if (raw.trim().isEmpty) return '';
+
+    try {
+      final dateTime = DateTime.parse(raw).toLocal();
+      return DateFormat('yyyy.MM.dd HH:mm').format(dateTime);
+    } catch (e) {
+      debugPrint('날짜 파싱 실패: $e');
+      return raw;
     }
   }
 
@@ -149,7 +174,7 @@ class _FormalNoticeDetailScreenState extends State<FormalNoticeDetailScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.pop(context, true),
         ),
       ),
       body: FutureBuilder<Map<String, dynamic>>(
@@ -285,11 +310,11 @@ class _FormalNoticeDetailScreenState extends State<FormalNoticeDetailScreen> {
                         ),
                         const SizedBox(height: 10),
 
-                        _InfoSection(
-                          title: '입력 정보',
-                          content: _categoryDataToText(categoryData),
-                        ),
-                        const SizedBox(height: 10),
+                        // _InfoSection(
+                        //   title: '입력 정보',
+                        //   content: _categoryDataToText(categoryData),
+                        // ),
+                        // const SizedBox(height: 10),
 
                         _InfoSection(
                           title: '생성된 내용증명',
@@ -302,7 +327,7 @@ class _FormalNoticeDetailScreenState extends State<FormalNoticeDetailScreen> {
                         if (createdAt.isNotEmpty) ...[
                           _InfoSection(
                             title: '작성일',
-                            content: createdAt,
+                            content: _formatCreatedAt(createdAt),
                           ),
                           const SizedBox(height: 10),
                         ],
@@ -380,7 +405,10 @@ class _FormalNoticeDetailScreenState extends State<FormalNoticeDetailScreen> {
                       ),
                       TextButton(
                         onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('삭제'),
+                        child: const Text(
+                          '삭제',
+                          style: TextStyle(color: Colors.red),
+                        ),
                       ),
                     ],
                   ),
@@ -388,19 +416,16 @@ class _FormalNoticeDetailScreenState extends State<FormalNoticeDetailScreen> {
 
                 if (confirmed != true) return;
 
-                final ok = await _deleteFormalNotice(_formalNoticeNo!);
+                final result = await _deleteFormalNotice(_formalNoticeNo!);
 
                 if (!mounted) return;
 
-                if (ok) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('내용증명이 삭제되었습니다.')),
-                  );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(result.$2)),
+                );
+
+                if (result.$1) {
                   Navigator.pop(context, true);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('삭제에 실패했습니다. 다시 시도해주세요.')),
-                  );
                 }
               },
             ),
