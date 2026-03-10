@@ -29,68 +29,55 @@ class _FormalNoticeGeneratingScreenState
   /// 프론트에서만 사용하는 진행 단계
   int _activeStep = 1;
 
-  Timer? _stepTimer1;
-  Timer? _stepTimer2;
-  Timer? _stepTimer3;
-
   @override
   void initState() {
     super.initState();
-    _startFakeProgress();
     _start();
   }
 
-  @override
-  void dispose() {
-    _stepTimer1?.cancel();
-    _stepTimer2?.cancel();
-    _stepTimer3?.cancel();
-    super.dispose();
-  }
-
-  void _startFakeProgress() {
-    _stepTimer1?.cancel();
-    _stepTimer2?.cancel();
-    _stepTimer3?.cancel();
+  Future<void> _runFakeProgress() async {
+    if (!mounted) return;
 
     setState(() {
       _activeStep = 1;
       _done = false;
     });
 
-    _stepTimer1 = Timer(const Duration(milliseconds: 800), () {
-      if (!mounted || _done) return;
-      setState(() {
-        _activeStep = 1;
-      });
+    // 1번 단계가 먼저 켜진 상태로 잠깐 보이게
+    await Future.delayed(const Duration(milliseconds: 900));
+    if (!mounted) return;
+
+    setState(() {
+      _activeStep = 2;
     });
 
-    _stepTimer2 = Timer(const Duration(milliseconds: 1800), () {
-      if (!mounted || _done) return;
-      setState(() {
-        _activeStep = 2;
-      });
+    await Future.delayed(const Duration(milliseconds: 1100));
+    if (!mounted) return;
+
+    setState(() {
+      _activeStep = 3;
     });
 
-    _stepTimer3 = Timer(const Duration(milliseconds: 3000), () {
-      if (!mounted || _done) return;
-      setState(() {
-        _activeStep = 3;
-      });
+    // 3번 단계가 보이는 시간을 조금 줌
+    await Future.delayed(const Duration(milliseconds: 700));
+    if (!mounted) return;
+
+    setState(() {
+      _done = true;
     });
   }
 
   Future<void> _start() async {
     try {
-      final result = await _callBackend(widget.requestPayload);
+      final backendFuture = _callBackend(widget.requestPayload);
+      final progressFuture = _runFakeProgress();
+
+      final result = await backendFuture;
+      await progressFuture;
+
       if (!mounted) return;
 
-      setState(() {
-        _done = true;
-        _activeStep = 3;
-      });
-
-      await Future.delayed(const Duration(milliseconds: 400));
+      await Future.delayed(const Duration(milliseconds: 250));
       if (!mounted) return;
 
       Navigator.pushReplacement(
@@ -104,7 +91,10 @@ class _FormalNoticeGeneratingScreenState
       );
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = e.toString());
+      setState(() {
+        _error = e.toString();
+        _done = false;
+      });
     }
   }
 
@@ -159,7 +149,6 @@ class _FormalNoticeGeneratingScreenState
       _activeStep = 1;
     });
 
-    _startFakeProgress();
     _start();
   }
 

@@ -197,7 +197,9 @@ public class FormalNoticeController {
         log.info("no={}", no);
 
         try {
-            boolean result = formalNoticeService.deleteById(no.toString());
+            // no로 id 추출
+            String id = formalNoticeService.selectByFormalNoticeNo(no).getId();
+            boolean result = formalNoticeService.deleteById(id);
             if (result) {
                 return ResponseEntity.ok().body("내용증명 삭제 완료");
             } else {

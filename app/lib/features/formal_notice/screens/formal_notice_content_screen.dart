@@ -161,6 +161,81 @@ class _FormalNoticeProgressTabState extends State<_FormalNoticeProgressTab> {
     }
   }
 
+  Future<bool> _showDeleteConfirmDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('내용증명 삭제'),
+          content: const Text('정말 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text(
+                '삭제',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    return result ?? false;
+  }
+
+  Future<void> _deleteFormalNotice(dynamic no) async {
+    final confirmed = await _showDeleteConfirmDialog();
+    if (!confirmed) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt');
+
+      final response = await http.delete(
+        Uri.parse('${AppConfig.baseUrl}/api/v1/formal-notice/$no'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200 ||
+          response.statusCode == 204 ||
+          response.statusCode == 202) {
+        setState(() {
+          _items.removeWhere((item) {
+            final itemNo = item['no'] ?? item['formalNoticeNo'] ?? item['id'];
+            return itemNo.toString() == no.toString();
+          });
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('삭제되었습니다.')),
+        );
+      } else {
+        debugPrint(
+          'FormalNotice delete failed: ${response.statusCode} ${response.body}',
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('삭제에 실패했습니다.')),
+        );
+      }
+    } catch (e) {
+      debugPrint('FormalNotice delete error: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('삭제 중 오류가 발생했습니다.')),
+      );
+    }
+  }
+
   int _statusStep(String status) {
     switch (status.trim()) {
       case '대기':
@@ -360,10 +435,26 @@ class _FormalNoticeProgressTabState extends State<_FormalNoticeProgressTab> {
                     ],
                   ),
                 ),
-                const Icon(
-                  Icons.more_vert,
-                  size: 22,
-                  color: AppColors.textPrimary,
+                PopupMenuButton<String>(
+                  icon: const Icon(
+                    Icons.more_vert,
+                    size: 22,
+                    color: AppColors.textPrimary,
+                  ),
+                  onSelected: (value) {
+                    if (value == 'delete') {
+                      _deleteFormalNotice(no);
+                    }
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem<String>(
+                      value: 'delete',
+                      child: Text(
+                        '삭제',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -481,6 +572,81 @@ class _FormalNoticeHistoryTabState extends State<_FormalNoticeHistoryTab> {
       }
     } catch (_) {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<bool> _showDeleteConfirmDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('내용증명 삭제'),
+          content: const Text('정말 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text(
+                '삭제',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    return result ?? false;
+  }
+
+  Future<void> _deleteFormalNotice(dynamic no) async {
+    final confirmed = await _showDeleteConfirmDialog();
+    if (!confirmed) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt');
+
+      final response = await http.delete(
+        Uri.parse('${AppConfig.baseUrl}/api/v1/formal-notice/$no'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200 ||
+          response.statusCode == 204 ||
+          response.statusCode == 202) {
+        setState(() {
+          _items.removeWhere((item) {
+            final itemNo = item['no'] ?? item['formalNoticeNo'] ?? item['id'];
+            return itemNo.toString() == no.toString();
+          });
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('삭제되었습니다.')),
+        );
+      } else {
+        debugPrint(
+          'FormalNotice delete failed: ${response.statusCode} ${response.body}',
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('삭제에 실패했습니다.')),
+        );
+      }
+    } catch (e) {
+      debugPrint('FormalNotice delete error: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('삭제 중 오류가 발생했습니다.')),
+      );
     }
   }
 
@@ -654,10 +820,26 @@ class _FormalNoticeHistoryTabState extends State<_FormalNoticeHistoryTab> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                const Icon(
-                  Icons.more_vert,
-                  size: 22,
-                  color: AppColors.textPrimary,
+                PopupMenuButton<String>(
+                  icon: const Icon(
+                    Icons.more_vert,
+                    size: 22,
+                    color: AppColors.textPrimary,
+                  ),
+                  onSelected: (value) {
+                    if (value == 'delete') {
+                      _deleteFormalNotice(no);
+                    }
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem<String>(
+                      value: 'delete',
+                      child: Text(
+                        '삭제',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 Container(
